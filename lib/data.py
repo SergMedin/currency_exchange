@@ -1,5 +1,6 @@
 import dataclasses
 import enum
+import unittest
 
 
 class OrderType(enum.Enum):
@@ -19,3 +20,8 @@ class Order:
     amount_initial: int
     amount_left: int
     min_op_threshold: int
+
+
+class T(unittest.TestCase):
+    def testT(self):
+        print("Hehe")
