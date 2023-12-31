@@ -1,6 +1,7 @@
 import unittest
 import dataclasses
 import sqlite3
+from typing import Callable, Any
 from .data import Order, User, OrderType
 
 
@@ -26,8 +27,31 @@ class DbMock(Db):
         pass
 
 
+ValueConvertFunctionType = Callable[[Any,], Any]
+
+
+@dataclasses.dataclass
+class Field:
+    do_name: str
+    db_name: str
+    do2db: ValueConvertFunctionType = None
+    db2do: ValueConvertFunctionType = None
+
+
+@dataclasses.dataclass
+class Table:
+    name: str
+    fields: list[Field]
+
+
 class SQLiteDb(Db):
-    ORDERS_TABLE_NAME = "orders"
+    ORDERS_TABLE = Table("orders", [
+        Field("type", "order_type", lambda x: int(x)),
+        Field("user", "user_id", lambda x: x.id),
+        Field("amount_initial", "amount_initial_cents", lambda x: int(x*100)),
+        Field("amount_left", "amount_left_cents", lambda x: int(x*100)),
+        Field("min_op_threshold", "min_op_threshold_cents", lambda x: int(x*100)),
+    ])
 
     def __init__(self, filename=None):
         super().__init__()
@@ -36,27 +60,23 @@ class SQLiteDb(Db):
         self._ensure_db_initialized()
 
     def store_order(self, o: Order) -> Order:
-        fields = [
-            ["type", "order_type", lambda x: int(x)],
-            ["user", "user_id", lambda x: x.id],
-            ["amount_initial", "amount_initial_cents", lambda x: int(x*100)],
-            ["amount_left", "amount_left_cents", lambda x: int(x*100)],
-            ["min_op_threshold", "min_op_threshold_cents", lambda x: int(x*100)],
-        ]
         db_fileds_list = []
         values = []
-        for do_field, db_field, conv_fn in fields:
-            value_do = getattr(o, do_field)
-            value_db = value_do if not conv_fn else conv_fn(value_do)
-            db_fileds_list.append(db_field)
+        for f in self.ORDERS_TABLE.fields:
+            value_do = getattr(o, f.do_name)
+            value_db = value_do if not f.do2db else f.do2db(value_do)
+            db_fileds_list.append(f.db_name)
             values.append(value_db)
 
         db_fileds_list_str = ", ".join(db_fileds_list)
         question_marks = ", ".join(["?"] * len(db_fileds_list))
-        sql = f"INSERT INTO {self.ORDERS_TABLE_NAME} ({db_fileds_list_str}) ({question_marks})"
+        sql = f"INSERT INTO {self.ORDERS_TABLE.name} ({db_fileds_list_str}) VALUES ({question_marks})"
         print("SQL:", sql, values)
-        # cursor = self._conn.cursor()
-        # cursor.execute(f"INSERT INTO {self.ORDERS_TABLE_NAME} () ({ddl})")
+        cursor = self._conn.cursor()
+        cursor.execute(sql, values)
+
+    def get_order(self, id: int) -> Order:
+        pass
 
     def _ensure_db_initialized(self):
         ddl = """
@@ -68,7 +88,7 @@ class SQLiteDb(Db):
             min_op_threshold_cents INTEGER NOT NULL CHECK (min_op_threshold_cents >= 0)
             """
         tables = [
-            [self.ORDERS_TABLE_NAME, ddl]
+            [self.ORDERS_TABLE.name, ddl]
         ]
         comm = False
         for table_name, ddl in tables:
