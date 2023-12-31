@@ -7,6 +7,8 @@ from . import data
 from .logger import get_logger
 logger = get_logger(__name__)
 
+from .config import ORDER_LIFETIME_LIMIT
+
 class Exchange:
 
     def __init__(self, db: Db, on_match=None):
@@ -14,22 +16,32 @@ class Exchange:
         self._on_match = on_match
         self._orders: dict[int, data.Order] = {}  # TODO: load orders from db here
 
-    def on_new_order(self, o: data.Order):
-        if o.lifetime > 48:
-            raise ValueError("Order lifetime cannot exceed 48 hours")
+    class Exchange:
+        def on_new_order(self, o: data.Order) -> None:
+            if o.lifetime > ORDER_LIFETIME_LIMIT:
+                raise ValueError("Order lifetime cannot exceed 48 hours")
 
-        o = self._db.store_order(o)
-        self._orders[o._id] = o
-        self._check_order_lifetime() # Removing expired orders
-        self._process_matches()
+            o = self._db.store_order(o)
+            self._orders[o._id] = o
+            self._check_order_lifetime() # Removing expired orders
+            self._process_matches()
 
-    def _check_order_lifetime(self):
-        current_time = time.time()
-        expired_orders = [o for o in self._orders.values() if (current_time - o.creation_time) / 3600 > o.lifetime]
-        for o in expired_orders:
-            self._remove_order(o._id)
+    def _check_order_lifetime(self) -> None:
+            """
+            Check the lifetime of orders and remove expired orders.
 
-    def _process_matches(self):
+            This method iterates through all the orders in the exchange and checks if their lifetime has exceeded.
+            If an order's lifetime has exceeded, it is removed from the exchange.
+
+            Returns:
+                None
+            """
+            current_time = time.time()
+            expired_orders = [o for o in self._orders.values() if (current_time - o.creation_time) > o.lifetime]
+            for o in expired_orders:
+                self._remove_order(o._id)
+
+    def _process_matches(self) -> None:
         while True:
             logger.debug('=[ _process_matches: new interation ]='.center(80, '-'))
             sellers, buyers = [[o for o in self._orders.values() if o.type == t]
@@ -53,7 +65,7 @@ class Exchange:
             #   - It doesn't check the uniqueness of user_id (bug or feature?)
             if bo.price >= so.price:
                 amount = min(bo.amount_left, so.amount_left)
-                match = data.Match(dataclasses.replace(so), dataclasses.replace(bo), (so.price+bo.price)/2, amount)
+                match = data.Match(dataclasses.replace(so), dataclasses.replace(bo), round((so.price+bo.price)/2, 2), amount)
                 logger.debug(f'match: {match}')
                 if self._on_match:
                     self._on_match(match)
@@ -65,7 +77,7 @@ class Exchange:
             else:
                 break
 
-    def _remove_order(self, _id: int):
+    def _remove_order(self, _id: int) -> None:
         del self._orders[_id]
         self._db.remove_order(_id)
 
