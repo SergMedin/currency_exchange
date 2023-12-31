@@ -10,7 +10,7 @@ class Db:
     def store_order(self, o: Order) -> Order:
         raise NotImplementedError()
 
-    def remove_order(self, _id: int):
+    def remove_order(self, id: int):
         raise NotImplementedError()
 
 
@@ -24,7 +24,7 @@ class DbMock(Db):
         o._id = self._order_id_gen
         return o
 
-    def remove_order(self, _id: int):
+    def remove_order(self, id: int):
         pass
 
 
@@ -88,7 +88,7 @@ class SQLiteDb(Db):
         db_fileds_list_str = ", ".join(db_fileds_list)
         question_marks = ", ".join(["?"] * len(db_fileds_list))
         sql = f"INSERT INTO {self.ORDERS_TABLE.name} ({db_fileds_list_str}) VALUES ({question_marks})"
-        print("SQL:", sql, values)
+        # print("SQL:", sql, values)
         cursor = self._conn.cursor()
         cursor.execute(sql, values)
         _id = cursor.lastrowid
@@ -102,13 +102,18 @@ class SQLiteDb(Db):
         if not row:
             raise Exception(f"Order with id={id} not found in the DB")
         row = dict(row)
-        print("ROW:", row)
+        # print("ROW:", row)
         values = {}
         for f in self.ORDERS_TABLE.fields:
             value = row[f.db_name] if not f.db2do else f.db2do(row[f.db_name])
             values[f.do_name] = value
-        print("VALUES:", row)
+        # print("VALUES:", row)
         return Order(**values)
+
+    def remove_order(self, id: int):
+        cursor = self._conn.cursor()
+        cursor.execute(f"DELETE FROM {self.ORDERS_TABLE.name} WHERE id = ?", (id,))
+        self._conn.commit()
 
     def _ensure_db_initialized(self):
         ddl = ", ".join(f"{f.db_name} {f.ddl}" for f in self.ORDERS_TABLE.fields)
@@ -138,4 +143,4 @@ class T(unittest.TestCase):
         db = SQLiteDb(None)
         o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48.0)
         o2 = db.store_order(o)
-        print("O2", o2)
+        # print("O2", o2)
