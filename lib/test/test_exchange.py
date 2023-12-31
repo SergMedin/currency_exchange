@@ -17,8 +17,8 @@ class T(unittest.TestCase):
         db = DbMock()
         matches = []
         e = exchange.Exchange(db, lambda m: matches.append(m))
-        e.new_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0))
-        e.new_order(Order(User(2), OrderType.BUY, 98.0, 1299.0, 500.0))
+        e.on_new_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0))
+        e.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1299.0, 500.0))
         self.assertEqual(len(matches), 1)
 
     # def testSimpleNoMatch(self):
@@ -33,8 +33,8 @@ class T(unittest.TestCase):
         db = DbMock()
         matches = []
         e = exchange.Exchange(db, lambda m: matches.append(m))
-        e.new_order(Order(User(1), OrderType.SELL, 100.0, 1299.0, 500.0))
-        e.new_order(Order(User(2), OrderType.BUY, 98.0, 1299.0, 500.0))
+        e.on_new_order(Order(User(1), OrderType.SELL, 100.0, 1299.0, 500.0))
+        e.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1299.0, 500.0))
         self.assertEqual(len(matches), 0)
 
     def testDifferentPricesSellLessThanBuy(self):
@@ -42,8 +42,8 @@ class T(unittest.TestCase):
         db = DbMock()
         matches = []
         e = exchange.Exchange(db, lambda m: matches.append(m))
-        e.new_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0))
-        e.new_order(Order(User(2), OrderType.BUY, 100.0, 1299.0, 500.0))
+        e.on_new_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0))
+        e.on_new_order(Order(User(2), OrderType.BUY, 100.0, 1299.0, 500.0))
         self.assertEqual(len(matches), 1)
 
     def testManyOrders(self):
@@ -51,8 +51,8 @@ class T(unittest.TestCase):
         db = DbMock()
         matches = []
         e = exchange.Exchange(db, lambda m: matches.append(m))
-        e.new_order(Order(User(1), OrderType.SELL, 100.0, 1299.0, 500.0))
-        e.new_order(Order(User(2), OrderType.BUY, 98.0, 1500.0, 500.0))
-        e.new_order(Order(User(3), OrderType.SELL, 102.0, 2000.0, 500.0))
-        e.new_order(Order(User(1), OrderType.BUY, 110.0, 3000.0, 500.0))
+        e.on_new_order(Order(User(1), OrderType.SELL, 100.0, 1299.0, 500.0))
+        e.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1500.0, 500.0))
+        e.on_new_order(Order(User(3), OrderType.SELL, 102.0, 2000.0, 500.0))
+        e.on_new_order(Order(User(1), OrderType.BUY, 110.0, 3000.0, 500.0))
         self.assertEqual(len(matches), 2)

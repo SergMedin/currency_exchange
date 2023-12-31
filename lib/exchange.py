@@ -13,7 +13,7 @@ class Exchange:
         self._on_match = on_match
         self._orders: dict[int, data.Order] = {}  # TODO: load orders from db here
 
-    def new_order(self, o: data.Order):
+    def on_new_order(self, o: data.Order):
         o = self._db.store_order(o)
         self._orders[o._id] = o
         self._process_matches()
