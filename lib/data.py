@@ -2,6 +2,7 @@ import dataclasses
 import enum
 from decimal import Decimal
 import unittest
+import time
 
 
 class OrderType(enum.Enum):
@@ -21,8 +22,10 @@ class Order:
     price: Decimal
     amount_initial: Decimal
     min_op_threshold: Decimal
-    amount_left: Decimal = -1.0
+    lifetime: Decimal  # Life time in hours
+    creation_time: Decimal = dataclasses.field(default_factory=time.time)
     _id: int = None
+    amount_left: Decimal = -1.0
 
     def __post_init__(self):
         if self.amount_left == -1.0:

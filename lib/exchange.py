@@ -1,3 +1,4 @@
+import time
 import dataclasses
 import unittest
 from .db import Db
@@ -14,9 +15,19 @@ class Exchange:
         self._orders: dict[int, data.Order] = {}  # TODO: load orders from db here
 
     def on_new_order(self, o: data.Order):
+        if o.lifetime > 48:
+            raise ValueError("Order lifetime cannot exceed 48 hours")
+
         o = self._db.store_order(o)
         self._orders[o._id] = o
+        self._check_order_lifetime() # Removing expired orders
         self._process_matches()
+
+    def _check_order_lifetime(self):
+        current_time = time.time()
+        expired_orders = [o for o in self._orders.values() if (current_time - o.creation_time) / 3600 > o.lifetime]
+        for o in expired_orders:
+            self._remove_order(o._id)
 
     def _process_matches(self):
         while True:
@@ -35,15 +46,15 @@ class Exchange:
             so = sellers[0]
             bo = buyers[0]
             
-            logger.debug(f'so: {so}\nbo: {bo}\n')  # Print values of so and bo 
+            logger.debug(f'so: {so}\nbo: {bo}\n')
             
             # FIXME:
             #   - it now ignores min_thershold
-            #   - It doesn't check the uniqueness of user_id
+            #   - It doesn't check the uniqueness of user_id (bug or feature?)
             if bo.price >= so.price:
                 amount = min(bo.amount_left, so.amount_left)
                 match = data.Match(dataclasses.replace(so), dataclasses.replace(bo), (so.price+bo.price)/2, amount)
-                logger.debug(f'match: {match}')  # Print values of so and bo 
+                logger.debug(f'match: {match}')
                 if self._on_match:
                     self._on_match(match)
                 so.amount_left -= amount
