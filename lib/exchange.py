@@ -16,15 +16,14 @@ class Exchange:
         self._on_match = on_match
         self._orders: dict[int, data.Order] = {}  # TODO: load orders from db here
 
-    class Exchange:
-        def on_new_order(self, o: data.Order) -> None:
-            if o.lifetime > ORDER_LIFETIME_LIMIT:
-                raise ValueError("Order lifetime cannot exceed 48 hours")
+    def on_new_order(self, o: data.Order) -> None:
+        if o.lifetime > ORDER_LIFETIME_LIMIT:
+            raise ValueError("Order lifetime cannot exceed 48 hours")
 
-            o = self._db.store_order(o)
-            self._orders[o._id] = o
-            self._check_order_lifetime() # Removing expired orders
-            self._process_matches()
+        o = self._db.store_order(o)
+        self._orders[o._id] = o
+        self._check_order_lifetime() # Removing expired orders
+        self._process_matches()
 
     def _check_order_lifetime(self) -> None:
             """
