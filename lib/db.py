@@ -142,5 +142,5 @@ class T(unittest.TestCase):
     def testAddAndFetchOrder(self):
         db = SQLiteDb(None)
         o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48.0)
-        o2 = db.store_order(o)
+        db.store_order(o)
         # print("O2", o2)
