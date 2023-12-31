@@ -37,8 +37,8 @@ class Order:
     price: Decimal
     amount_initial: Decimal
     min_op_threshold: Decimal
-    lifetime: int  # Life time in seconds
-    creation_time: int = dataclasses.field(default_factory=time.time)
+    lifetime: int
+    creation_time: int = dataclasses.field(default_factory=lambda: int(time.time()))
     _id: int = None
     amount_left: Decimal = -1.0
 

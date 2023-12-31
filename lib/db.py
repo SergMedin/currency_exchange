@@ -54,8 +54,9 @@ class SQLiteDb(Db):
     ORDERS_TABLE = Table("orders", [
         Field("_id", "id", "INTEGER PRIMARY KEY", None, None, True),
         Field("type", "order_type", "INTEGER CHECK (order_type IN (1, 2))", lambda x: int(x), lambda x: OrderType(x)),
-        Field("lifetime", "lifetime", "INEGER NOT NULL"),
-        Field("user", "user_id", "INEGER NOT NULL", lambda x: x.id, lambda x: User(x)),
+        Field("lifetime", "lifetime", "INTEGER NOT NULL"),
+        Field("creation_time", "creation_time", "INTEGER NOT NULL"),
+        Field("user", "user_id", "INTEGER NOT NULL", lambda x: x.id, lambda x: User(x)),
         Field("price", "price_cents",
               "INTEGER NOT NULL CHECK (price_cents > 0)", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
         Field("amount_initial", "amount_initial_cents",
