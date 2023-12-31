@@ -1,6 +1,7 @@
 import unittest
 import dataclasses
 import sqlite3
+from decimal import Decimal
 from typing import Callable, Any
 from .data import Order, User, OrderType
 
@@ -34,8 +35,10 @@ ValueConvertFunctionType = Callable[[Any,], Any]
 class Field:
     do_name: str
     db_name: str
+    ddl: str
     do2db: ValueConvertFunctionType = None
     db2do: ValueConvertFunctionType = None
+    skip_insert: bool = False
 
 
 @dataclasses.dataclass
@@ -45,24 +48,37 @@ class Table:
 
 
 class SQLiteDb(Db):
+    # FIXME: use try..finally for cursors
+    # FIXME: should we reuse cursor?
+
     ORDERS_TABLE = Table("orders", [
-        Field("type", "order_type", lambda x: int(x)),
-        Field("user", "user_id", lambda x: x.id),
-        Field("amount_initial", "amount_initial_cents", lambda x: int(x*100)),
-        Field("amount_left", "amount_left_cents", lambda x: int(x*100)),
-        Field("min_op_threshold", "min_op_threshold_cents", lambda x: int(x*100)),
+        Field("_id", "id", "INTEGER PRIMARY KEY", None, None, True),
+        Field("type", "order_type", "INTEGER CHECK (order_type IN (1, 2))", lambda x: int(x), lambda x: OrderType(x)),
+        Field("lifetime", "lifetime", "INEGER NOT NULL"),
+        Field("user", "user_id", "INEGER NOT NULL", lambda x: x.id, lambda x: User(x)),
+        Field("price", "price_cents",
+              "INTEGER NOT NULL CHECK (price_cents > 0)", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
+        Field("amount_initial", "amount_initial_cents",
+              "INTEGER NOT NULL CHECK (amount_initial_cents > 0)", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
+        Field("amount_left", "amount_left_cents", "INTEGER NOT NULL CHECK (amount_left_cents >= 0)",
+              lambda x: int(x*100), lambda x: x/Decimal(100.0)),
+        Field("min_op_threshold", "min_op_threshold_cents",
+              "INTEGER NOT NULL CHECK (min_op_threshold_cents >= 0)", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
     ])
 
     def __init__(self, filename=None):
         super().__init__()
         self._filename = filename or ":memory:"
         self._conn = sqlite3.connect(self._filename)
+        self._conn.row_factory = sqlite3.Row
         self._ensure_db_initialized()
 
     def store_order(self, o: Order) -> Order:
         db_fileds_list = []
         values = []
         for f in self.ORDERS_TABLE.fields:
+            if f.skip_insert:
+                continue
             value_do = getattr(o, f.do_name)
             value_db = value_do if not f.do2db else f.do2db(value_do)
             db_fileds_list.append(f.db_name)
@@ -74,19 +90,27 @@ class SQLiteDb(Db):
         print("SQL:", sql, values)
         cursor = self._conn.cursor()
         cursor.execute(sql, values)
+        _id = cursor.lastrowid
+        self._conn.commit()
+        return self.get_order(_id)
 
     def get_order(self, id: int) -> Order:
-        pass
+        cursor = self._conn.cursor()
+        cursor.execute(f"SELECT * FROM {self.ORDERS_TABLE.name} WHERE id = ?", (id,))
+        row = cursor.fetchone()
+        if not row:
+            raise Exception(f"Order with id={id} not found in the DB")
+        row = dict(row)
+        print("ROW:", row)
+        values = {}
+        for f in self.ORDERS_TABLE.fields:
+            value = row[f.db_name] if not f.db2do else f.db2do(row[f.db_name])
+            values[f.do_name] = value
+        print("VALUES:", row)
+        return Order(**values)
 
     def _ensure_db_initialized(self):
-        ddl = """
-            id INTEGER PRIMARY KEY,
-            order_type INTEGER CHECK (order_type IN (1, 2)),
-            user_id INEGER NOT NULL,
-            amount_initial_cents INTEGER NOT NULL CHECK (amount_initial_cents > 0),
-            amount_left_cents INTEGER NOT NULL CHECK (amount_left_cents >= 0),
-            min_op_threshold_cents INTEGER NOT NULL CHECK (min_op_threshold_cents >= 0)
-            """
+        ddl = ", ".join(f"{f.db_name} {f.ddl}" for f in self.ORDERS_TABLE.fields)
         tables = [
             [self.ORDERS_TABLE.name, ddl]
         ]
@@ -112,4 +136,5 @@ class T(unittest.TestCase):
     def testAddAndFetchOrder(self):
         db = SQLiteDb(None)
         o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48.0)
-        db.store_order(o)
+        o2 = db.store_order(o)
+        print("O2", o2)
