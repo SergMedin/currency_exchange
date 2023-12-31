@@ -5,7 +5,7 @@ import unittest
 import time
 
 
-class OrderType(enum.Enum):
+class OrderType(enum.IntEnum):
     SELL = 1
     BUY = 2
 
