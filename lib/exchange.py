@@ -44,41 +44,51 @@ class Exchange:
             self._remove_order(o._id)
 
     def _process_matches(self) -> None:
-        while True:
-            logger.debug('=[ _process_matches: new interation ]='.center(80, '-'))
-            sellers, buyers = [[o for o in self._orders.values() if o.type == t]
-                               for t in [data.OrderType.SELL, data.OrderType.BUY]]
+        logger.debug('=[ _process_matches: new iteration ]='.center(80, '-'))
+        sellers = [o for o in self._orders.values() if o.type == data.OrderType.SELL]
+        buyers = [o for o in self._orders.values() if o.type == data.OrderType.BUY]
 
-            logger.debug(f'S: {sellers}\nB: {buyers}\n')
+        logger.debug(f'S: {sellers}\nB: {buyers}\n')
 
-            if len(sellers) <= 0 or len(buyers) <= 0:
-                break
+        sellers.sort(key=lambda x: x.price)
+        buyers.sort(key=lambda x: -x.price)
 
-            sellers.sort(key=lambda x: x.price)
-            buyers.sort(key=lambda x: -x.price)
-
-            so = sellers[0]
-            bo = buyers[0]
-
-            logger.debug(f'so: {so}\nbo: {bo}\n')
-
-            # FIXME:
-            #   - it now ignores min_thershold
-            #   - It doesn't check the uniqueness of user_id (bug or feature?)
-            if bo.price >= so.price:
-                amount = min(bo.amount_left, so.amount_left)
-                match = data.Match(dataclasses.replace(so), dataclasses.replace(bo),
-                                   round((so.price+bo.price)/2, 2), amount)
-                logger.debug(f'match: {match}')
-                if self._on_match:
-                    self._on_match(match)
-                so.amount_left -= amount
-                bo.amount_left -= amount
-                for o in (so, bo):
-                    if o.amount_left <= 0:
-                        self._remove_order(o._id)
+        for buyer in buyers:
+            for seller in sellers:
+                if (
+                    buyer.price >= seller.price
+                    and seller.amount_left >= buyer.min_op_threshold
+                    and buyer.amount_left >= seller.min_op_threshold
+                ):
+                    so = seller
+                    bo = buyer
+                    break
             else:
-                break
+                continue
+            break
+
+        else:
+            return
+
+        logger.debug(f'so: {so}\nbo: {bo}\n')
+
+        amount = min(bo.amount_left, so.amount_left)
+        match = data.Match(
+            dataclasses.replace(so),
+            dataclasses.replace(bo),
+            round((so.price + bo.price) / 2, 2),
+            amount
+        )
+        logger.debug(f'match: {match}')
+        if self._on_match:
+            self._on_match(match)
+        so.amount_left -= amount
+        bo.amount_left -= amount
+        for o in (so, bo):
+            if o.amount_left <= 0:
+                self._remove_order(o._id)
+            elif o.amount_left <= o.min_op_threshold:
+                o.min_op_threshold = o.amount_left
 
     def _remove_order(self, _id: int) -> None:
         del self._orders[_id]

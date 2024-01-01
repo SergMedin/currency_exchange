@@ -51,6 +51,18 @@ class T(unittest.TestCase):
         self.exchange.on_new_order(Order(User(1), OrderType.SELL, 120.0, 2000.0, 500.0, lifetime=48*60*60))
         self.assertEqual(len(self.matches), 1)
 
+    def testMinOpThresholdSuitable(self):
+        logger.debug('[ testDifferentPricesSellLessThanBuy ]'.center(80, '|'))
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 4.51, 1000, 500.0, lifetime=48*60*60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 4.55, 2000, 1000.0, lifetime=48*60*60))
+        self.assertEqual(len(self.matches), 1)
+
+    def testMinOpThresholdUnsuitable(self):
+        logger.debug('[ testDifferentPricesSellLessThanBuy ]'.center(80, '|'))
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 4.51, 1000, 500.0, lifetime=48*60*60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 4.55, 2000, 2000.0, lifetime=48*60*60))
+        self.assertEqual(len(self.matches), 0)
+
     def testOrderLifetimeExceeded(self):
         logger.debug('[ testOrderLifetimeExceeded ]'.center(80, '|'))
         self.exchange.on_new_order(Order(user=User(1), type=OrderType.BUY, price=100.0, amount_initial=100.0,

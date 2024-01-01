@@ -6,6 +6,8 @@ from decimal import Decimal, InvalidOperation
 
 
 class TgApp:
+    # TODO:
+    # - add lifetime to orders
     def __init__(self, db: Db, tg: Tg):
         self._db = db
         self._tg = tg
@@ -24,7 +26,7 @@ class TgApp:
                     raise ValueError("Price has more than two digits after the decimal point")
             except InvalidOperation:
                 raise ValueError("Invalid value for Decimal")
-        
+
         def _check_amount(amount: Decimal) -> None:
             if amount <= 0:
                 raise ValueError("Amount cannot be negative or zero")
