@@ -1,7 +1,7 @@
 import time
 import unittest
 from ..exchange import Exchange
-from ..db import SQLiteDb
+from ..db_sqla import SqlDb
 from ..data import Order, User, OrderType
 
 from ..logger import get_logger
@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 class T(unittest.TestCase):
 
     def setUp(self):
-        self.db = SQLiteDb()
+        self.db = SqlDb()
         self.matches = []
         self.exchange = Exchange(self.db, lambda m: self.matches.append(m))
 
