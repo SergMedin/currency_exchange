@@ -38,7 +38,7 @@ class Field:
     ddl: str
     do2db: ValueConvertFunctionType = None
     db2do: ValueConvertFunctionType = None
-    skip_insert: bool = False
+    is_id: bool = False
 
 
 @dataclasses.dataclass
@@ -78,7 +78,7 @@ class SQLiteDb(Db):
         db_fileds_list = []
         values = []
         for f in self.ORDERS_TABLE.fields:
-            if f.skip_insert:
+            if f.is_id:
                 continue
             value_do = getattr(o, f.do_name)
             value_db = value_do if not f.do2db else f.do2db(value_do)
@@ -109,6 +109,27 @@ class SQLiteDb(Db):
             values[f.do_name] = value
         # print("VALUES:", row)
         return Order(**values)
+
+    def update_order(self, o: Order):
+        # TODO: I wonder how to pass pointers to fields so as not to update every field
+        # FIXME: this is copypaste from the insert. Extract the common part
+        db_fileds_list = []
+        values = []
+        for f in self.ORDERS_TABLE.fields:
+            if f.is_id:
+                continue
+            value_do = getattr(o, f.do_name)
+            value_db = value_do if not f.do2db else f.do2db(value_do)
+            db_fileds_list.append(f.db_name)
+            values.append(value_db)
+        values.append(o._id)
+
+        db_fileds_list_str = ", ".join([f"{field} = ?" for field in db_fileds_list])
+        sql = f"UPDATE {self.ORDERS_TABLE.name} SET {db_fileds_list_str} WHERE id = ?"
+        print("SQL:", sql, values)
+        cursor = self._conn.cursor()
+        cursor.execute(sql, values)
+        self._conn.commit()
 
     def remove_order(self, id: int):
         cursor = self._conn.cursor()
@@ -144,3 +165,13 @@ class T(unittest.TestCase):
         o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48.0)
         db.store_order(o)
         # print("O2", o2)
+
+    def testUpdate(self):
+        db = SQLiteDb()
+        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48.0)
+        o = db.store_order(o)
+        o.price = Decimal("50.1")
+        db.update_order(o)
+        o = db.get_order(o._id)
+        print("O:", o)
+        self.assertEqual(Decimal("50.1"), o.price)
