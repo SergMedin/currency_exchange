@@ -25,6 +25,12 @@ class T(unittest.TestCase):
         self.exchange.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1299.0, 500.0, lifetime=48*60*60))
         self.assertEqual(len(self.matches), 1)
 
+    def testPersistance(self):
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48*60*60))
+        self.exchange = Exchange(self.db, lambda m: self.matches.append(m))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1299.0, 500.0, lifetime=48*60*60))
+        self.assertEqual(len(self.matches), 1)
+
     def testDifferentPricesSellMoreThanBuy(self):
         logger.debug('[ testDifferentPricesSellMoreThanBuy ]'.center(80, '|'))
         self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 1299.0, 500.0, lifetime=48*60*60))

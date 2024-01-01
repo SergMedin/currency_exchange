@@ -166,7 +166,7 @@ class SQLiteDb(Db):
             values[f.do_name] = value
         return table.do_class(**values)
 
-    def _iterate(self, table: Table, callback: Callable[[Any], None], where: Any = None) -> None:
+    def _iterate(self, table: Table, callback: Callable[[Any], None], where: list[str, list] = None) -> None:
         cursor = self._conn.cursor()
         args = \
             [f"SELECT * FROM {table.name}"] if not where else \
