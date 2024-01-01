@@ -1,1 +1,1 @@
-ORDER_LIFETIME_LIMIT = 48 * 60 * 60 # seconds
+ORDER_LIFETIME_LIMIT = 48 * 60 * 60  # seconds

@@ -4,33 +4,26 @@ from ..tg import TelegramMock
 from ..db import SQLiteDb
 
 
-class T(unittest.TestCase):
-    def testSimpleMatch(self):
-        tg = TelegramMock()
-        db = SQLiteDb()
-        _ = TgApp(db, tg)
-        tg.add_message(1, "SELL 1500 usd * 98.1 rub")
-        tg.add_message(2, "BUY 1500 usd * 98.1 rub")
-        # print(tg.outgoing)
-        self.assertEqual(2, len(tg.outgoing))
+class TestTgApp(unittest.TestCase):
+    def setUp(self):
+        self.tg = TelegramMock()
+        self.db = SQLiteDb()
+        self.app = TgApp(self.db, self.tg)
 
-    def testSimpleNoMatch(self):
-        tg = TelegramMock()
-        db = SQLiteDb()
-        _ = TgApp(db, tg)
-        tg.add_message(1, "SELL 1500 usd * 98.1 rub")
-        tg.add_message(2, "BUY 1500 usd * 98.01 rub")
-        # print(tg.outgoing)
-        self.assertEqual(0, len(tg.outgoing))
+    def test_simple_match(self):
+        self.tg.add_message(1, "SELL 1500 usd * 98.1 rub")
+        self.tg.add_message(2, "BUY 1500 usd * 98.1 rub")
+        self.assertEqual(2, len(self.tg.outgoing))
 
-    def testSimpleBestPrice(self):
-        tg = TelegramMock()
-        db = SQLiteDb()
-        _ = TgApp(db, tg)
-        tg.add_message(1, "SELL 1500 usd * 98.1 rub")
-        tg.add_message(2, "SELL 1500 usd * 100 rub")
-        tg.add_message(3, "SELL 1500 usd * 110 rub")
-        tg.add_message(100, "BUY 1500 usd * 98.1 rub")
-        # print(tg.outgoing)
-        self.assertEqual(2, len(tg.outgoing))
-        self.assertTrue("for 98.10 per unit" in tg.outgoing[0].text)
+    def test_simple_no_match(self):
+        self.tg.add_message(1, "SELL 1500 usd * 98.1 rub")
+        self.tg.add_message(2, "BUY 1500 usd * 98.01 rub")
+        self.assertEqual(0, len(self.tg.outgoing))
+
+    def test_simple_best_price(self):
+        self.tg.add_message(1, "SELL 1500 usd * 98.1 rub")
+        self.tg.add_message(2, "SELL 1500 usd * 100 rub")
+        self.tg.add_message(3, "SELL 1500 usd * 110 rub")
+        self.tg.add_message(100, "BUY 1500 usd * 98.1 rub")
+        self.assertEqual(2, len(self.tg.outgoing))
+        self.assertIn("for 98.10 per unit", self.tg.outgoing[0].text)
