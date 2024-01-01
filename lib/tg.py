@@ -27,4 +27,7 @@ class TelegramMock(Tg):
     def add_message(self, from_user_id: int, text: str):
         m = TgMsg(from_user_id, text)
         self.incoming.append(m)
-        self.on_message(m)
+        try:
+            self.on_message(m)
+        except ValueError as e:
+            self.send_message(TgMsg(from_user_id, f'The message has an incorrect format: {str(e)}'))
