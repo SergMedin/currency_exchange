@@ -55,35 +55,14 @@ class _Base(DeclarativeBase):
 
 class _DbOrder(_Base):
     __tablename__ = "orders"
-
     id: Mapped[int] = mapped_column(primary_key=True)
-
-    # Field("type", "order_type", "INTEGER CHECK (order_type IN (1, 2))", lambda x: int(x), lambda x: OrderType(x)),
     type: Mapped[int] = mapped_column()
-
-    # Field("lifetime", "lifetime", "INTEGER NOT NULL"),
     lifetime: Mapped[int] = mapped_column(nullable=False)
-
-    # Field("creation_time", "creation_time", "INTEGER NOT NULL"),
     creation_time: Mapped[int] = mapped_column(nullable=False)
-
-    # Field("user", "user_id", "INTEGER NOT NULL", lambda x: x.id, lambda x: User(x)),
     user_id: Mapped[int] = mapped_column(nullable=False)
-
-    # Field("price", "price_cents",
-    #       "INTEGER NOT NULL CHECK (price_cents > 0)", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
     price_cents: Mapped[int] = mapped_column(nullable=False)
-
-    # Field("amount_initial", "amount_initial_cents",
-    #       "INTEGER NOT NULL CHECK (amount_initial_cents > 0)", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
     amount_initial_cents: Mapped[int] = mapped_column(nullable=False)
-
-    # Field("amount_left", "amount_left_cents", "INTEGER NOT NULL CHECK (amount_left_cents >= 0)",
-    #       lambda x: int(x*100), lambda x: x/Decimal(100.0)),
     amount_left_cents: Mapped[int] = mapped_column(nullable=False)
-
-    # Field("min_op_threshold", "min_op_threshold_cents",
-    #       "INTEGER NOT NULL CHECK (min_op_threshold_cents >= 0)", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
     min_op_threshold_cents: Mapped[int] = mapped_column(nullable=False)
 
 
@@ -101,7 +80,6 @@ class _Field:
 
 @dataclasses.dataclass
 class _Table:
-    name: str  # FIXME: never used?
     do_class: Callable  # FIXME: never used?
     fields: list[_Field]
 
@@ -120,7 +98,7 @@ class _Table:
         return d
 
 
-_ORDERS_TABLE = _Table("orders", Order, [
+_ORDERS_TABLE = _Table(Order, [
     _Field("_id", "id", None, None, True),
     _Field("type", "type", lambda x: int(x), lambda x: OrderType(x)),
     _Field("lifetime", "lifetime"),
