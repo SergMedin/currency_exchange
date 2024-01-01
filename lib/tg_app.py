@@ -11,7 +11,7 @@ class TgApp:
     def __init__(self, db: Db, tg: Tg):
         self._db = db
         self._tg = tg
-        self._tg.on_message = self._on_incoming_tg_message  # FIXME: questionable design. Fix it later
+        self._tg.on_message = self._on_incoming_tg_message
         self._ex = Exchange(self._db, self._on_match)
 
     def _on_incoming_tg_message(self, m: TgMsg):
