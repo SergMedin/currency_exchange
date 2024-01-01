@@ -15,37 +15,53 @@ class SqlDb(Db):
         _Base.metadata.create_all(self._eng)
 
     def get_order(self, id: int) -> Order:
-        with Session(self._eng) as session:
-            o = session.get(_DbOrder, id)
-            d = _ORDERS_TABLE.mk_dict(o, False)
-        return Order(**d)
+        return self._get(_ORDERS_TABLE, id)
 
     def store_order(self, o: Order) -> Order:
+        return self._store(_ORDERS_TABLE, o)
+
+    def update_order(self, o: Order):
+        self._update(_ORDERS_TABLE, o)
+
+    def remove_order(self, id: int):
+        self._remove(_ORDERS_TABLE, id)
+
+    def iterate_orders(self, callback: Callable[[Order], None]):
+        self._iterate(_ORDERS_TABLE, callback)
+
+    def _get(self, table, id):
         with Session(self._eng) as session:
-            d = _ORDERS_TABLE.mk_dict(o, True)
-            o_db = _DbOrder(**d)
+            o = session.get(table.db_class, id)
+            d = table.mk_dict(o, False)
+        return table.do_class(**d)
+
+    def _store(self, table, do):
+        with Session(self._eng) as session:
+            d = table.mk_dict(do, True)
+            o_db = table.db_class(**d)
             session.add(o_db)
             session.commit()
             id = o_db.id
-        return self.get_order(id)
+        return self._get(table, id)
 
-    def update_order(self, o: Order):
+    def _update(self, table, do):
         with Session(self._eng) as session:
-            dbo = session.get(_DbOrder, o._id)
-            for field_name, value in _ORDERS_TABLE.mk_dict(o, True).items():
+            id = table.get_id(do)
+            dbo = session.get(table.db_class, id)
+            for field_name, value in table.mk_dict(do, True).items():
                 setattr(dbo, field_name, value)  # updates only changed fields
             session.commit()
 
-    def remove_order(self, id: int):
+    def _remove(self, table, id):
         with Session(self._eng) as session:
-            session.delete(session.get(_DbOrder, id))
+            session.delete(session.get(table.db_class, id))
             session.commit()
 
-    def iterate_orders(self, callback: Callable[[Order], None]):
+    def _iterate(self, table, callback: Callable[[Order], None]):
         with Session(self._eng) as session:
-            for dbo in session.scalars(select(_DbOrder)):
-                d = _ORDERS_TABLE.mk_dict(dbo, False)
-                o = Order(**d)
+            for dbo in session.scalars(select(table.db_class)):
+                d = table.mk_dict(dbo, False)
+                o = table.do_class(**d)
                 callback(o)
 
 
@@ -81,6 +97,8 @@ class _Field:
 @dataclasses.dataclass
 class _Table:
     do_class: Callable  # FIXME: never used?
+    db_class: Callable
+    get_id: Callable
     fields: list[_Field]
 
     def get_id_field(self) -> _Field:
@@ -98,7 +116,7 @@ class _Table:
         return d
 
 
-_ORDERS_TABLE = _Table(Order, [
+_ORDERS_TABLE = _Table(Order, _DbOrder, lambda o: o._id, [
     _Field("_id", "id", None, None, True),
     _Field("type", "type", lambda x: int(x), lambda x: OrderType(x)),
     _Field("lifetime", "lifetime"),
