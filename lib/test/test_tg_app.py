@@ -1,13 +1,13 @@
 import unittest
 from ..tg_app import TgApp
 from ..tg import TelegramMock
-from ..db import SQLiteDb
+from ..db_sqla import SqlDb
 
 
 class TestTgApp(unittest.TestCase):
     def setUp(self):
         self.tg = TelegramMock()
-        self.db = SQLiteDb()
+        self.db = SqlDb()
         self.app = TgApp(self.db, self.tg)
 
     def test_simple_match(self):
