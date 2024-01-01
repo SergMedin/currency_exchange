@@ -10,11 +10,14 @@ logger = get_logger(__name__)
 
 
 class Exchange:
+    # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
     def __init__(self, db: Db, on_match=None):
         self._db = db
         self._on_match = on_match
-        self._orders: dict[int, data.Order] = {}  # TODO: load orders from db here
+        orders = []
+        self._db.iterate_orders(lambda o: orders.append((o._id, o)))
+        self._orders: dict[int, data.Order] = dict(orders)
 
     def on_new_order(self, o: data.Order) -> None:
         if o.lifetime > ORDER_LIFETIME_LIMIT:
