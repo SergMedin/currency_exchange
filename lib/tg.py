@@ -1,4 +1,5 @@
 import dataclasses
+from typing import Callable
 
 
 @dataclasses.dataclass
@@ -7,9 +8,20 @@ class TgMsg:
     text: str
 
 
+OnMessageType = Callable[[TgMsg], None]
+
+
 class Tg:
-    def on_message(self, m: TgMsg):
-        raise NotImplementedError()
+    def __init__(self):
+        self._on_message = None
+
+    @property
+    def on_message(self) -> OnMessageType:
+        return self._on_message
+
+    @on_message.setter
+    def on_message(self, value: OnMessageType) -> None:
+        self._on_message = value
 
     def send_message(self, m: TgMsg):
         raise NotImplementedError()
@@ -17,6 +29,7 @@ class Tg:
 
 class TelegramMock(Tg):
     def __init__(self):
+        super().__init__()
         self.outgoing: list[TgMsg] = []
         self.incoming: list[TgMsg] = []
 
@@ -24,10 +37,11 @@ class TelegramMock(Tg):
         # print("TG OUTGOING:", m)
         self.outgoing.append(m)
 
-    def add_message(self, from_user_id: int, text: str):
+    def emulate_incoming_message(self, from_user_id: int, text: str):
         m = TgMsg(from_user_id, text)
         self.incoming.append(m)
-        try:
-            self.on_message(m)
-        except ValueError as e:
-            self.send_message(TgMsg(from_user_id, f'The message has an incorrect format: {str(e)}'))
+        if self.on_message:
+            try:
+                self.on_message(m)
+            except ValueError as e:
+                self.send_message(TgMsg(from_user_id, f'The message has an incorrect format: {str(e)}'))
