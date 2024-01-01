@@ -7,7 +7,13 @@ from .data import Order, User, OrderType
 
 
 class Db:
+    def get_order(self, id: int) -> Order:
+        raise NotImplementedError()
+
     def store_order(self, o: Order) -> Order:
+        raise NotImplementedError()
+
+    def update_order(self, o: Order):
         raise NotImplementedError()
 
     def remove_order(self, id: int):
@@ -46,10 +52,14 @@ class Table:
     name: str
     fields: list[Field]
 
+    def get_id_field(self) -> Field:
+        return [f for f in self.fields if f.is_id][0]
+
 
 class SQLiteDb(Db):
     # FIXME: use try..finally for cursors
     # FIXME: should we reuse cursor?
+    # FIXME: add proper logging
 
     ORDERS_TABLE = Table("orders", [
         Field("_id", "id", "INTEGER PRIMARY KEY", None, None, True),
@@ -75,61 +85,14 @@ class SQLiteDb(Db):
         self._ensure_db_initialized()
 
     def store_order(self, o: Order) -> Order:
-        db_fileds_list = []
-        values = []
-        for f in self.ORDERS_TABLE.fields:
-            if f.is_id:
-                continue
-            value_do = getattr(o, f.do_name)
-            value_db = value_do if not f.do2db else f.do2db(value_do)
-            db_fileds_list.append(f.db_name)
-            values.append(value_db)
-
-        db_fileds_list_str = ", ".join(db_fileds_list)
-        question_marks = ", ".join(["?"] * len(db_fileds_list))
-        sql = f"INSERT INTO {self.ORDERS_TABLE.name} ({db_fileds_list_str}) VALUES ({question_marks})"
-        # print("SQL:", sql, values)
-        cursor = self._conn.cursor()
-        cursor.execute(sql, values)
-        _id = cursor.lastrowid
-        self._conn.commit()
-        return self.get_order(_id)
+        id = self._store(self.ORDERS_TABLE, o)
+        return self.get_order(id)
 
     def get_order(self, id: int) -> Order:
-        cursor = self._conn.cursor()
-        cursor.execute(f"SELECT * FROM {self.ORDERS_TABLE.name} WHERE id = ?", (id,))
-        row = cursor.fetchone()
-        if not row:
-            raise Exception(f"Order with id={id} not found in the DB")
-        row = dict(row)
-        # print("ROW:", row)
-        values = {}
-        for f in self.ORDERS_TABLE.fields:
-            value = row[f.db_name] if not f.db2do else f.db2do(row[f.db_name])
-            values[f.do_name] = value
-        # print("VALUES:", row)
-        return Order(**values)
+        return self._get(self.ORDERS_TABLE, id, Order)
 
     def update_order(self, o: Order):
-        # TODO: I wonder how to pass pointers to fields so as not to update every field
-        # FIXME: this is copypaste from the insert. Extract the common part
-        db_fileds_list = []
-        values = []
-        for f in self.ORDERS_TABLE.fields:
-            if f.is_id:
-                continue
-            value_do = getattr(o, f.do_name)
-            value_db = value_do if not f.do2db else f.do2db(value_do)
-            db_fileds_list.append(f.db_name)
-            values.append(value_db)
-        values.append(o._id)
-
-        db_fileds_list_str = ", ".join([f"{field} = ?" for field in db_fileds_list])
-        sql = f"UPDATE {self.ORDERS_TABLE.name} SET {db_fileds_list_str} WHERE id = ?"
-        print("SQL:", sql, values)
-        cursor = self._conn.cursor()
-        cursor.execute(sql, values)
-        self._conn.commit()
+        self._update(self.ORDERS_TABLE, o)
 
     def remove_order(self, id: int):
         cursor = self._conn.cursor()
@@ -155,6 +118,61 @@ class SQLiteDb(Db):
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
         return bool(cursor.fetchone())
 
+    def _store(self, table: Table, do: Any) -> Any:
+        db_fileds_list, values = self._get_insert_update_lists(table, do)
+        db_fileds_list_str = ", ".join(db_fileds_list)
+        question_marks = ", ".join(["?"] * len(db_fileds_list))
+        sql = f"INSERT INTO {table.name} ({db_fileds_list_str}) VALUES ({question_marks})"
+        # print("SQL:", sql, values)
+        cursor = self._conn.cursor()
+        cursor.execute(sql, values)
+        _id = cursor.lastrowid
+        self._conn.commit()
+        return _id
+
+    def _get(self, table: Table, id: int, cls: Callable) -> Any:
+        # FIXME: if could be of any type actually
+        cursor = self._conn.cursor()
+        cursor.execute(f"SELECT * FROM {table.name} WHERE id = ?", (id,))
+        row = cursor.fetchone()
+        if not row:
+            raise Exception(f"Row in {table.name} with id={id} was not found")
+        row = dict(row)
+        # print("ROW:", row)
+        values = {}
+        for f in table.fields:
+            value = row[f.db_name] if not f.db2do else f.db2do(row[f.db_name])
+            values[f.do_name] = value
+        # print("VALUES:", row)
+        return cls(**values)
+
+    def _update(self, table: Table, do: Any):
+        id_field = table.get_id_field()
+        db_fileds_list, values = self._get_insert_update_lists(table, do)
+        values.append(getattr(do, id_field.do_name))
+
+        db_fileds_list_str = ", ".join([f"{field} = ?" for field in db_fileds_list])
+        sql = f"UPDATE {self.ORDERS_TABLE.name} SET {db_fileds_list_str} WHERE id = ?"
+        # print("SQL:", sql, values)
+        cursor = self._conn.cursor()
+        cursor.execute(sql, values)
+        rc = cursor.rowcount
+        self._conn.commit()
+        if rc <= 0:
+            raise Exception("Update statement didn't affect any row")
+
+    def _get_insert_update_lists(self, table: Table, do: Any):
+        db_fileds_list = []
+        values = []
+        for f in table.fields:
+            if f.is_id:
+                continue
+            value_do = getattr(do, f.do_name)
+            value_db = value_do if not f.do2db else f.do2db(value_do)
+            db_fileds_list.append(f.db_name)
+            values.append(value_db)
+        return db_fileds_list, values
+
 
 class T(unittest.TestCase):
     def testCtor(self):
@@ -173,5 +191,4 @@ class T(unittest.TestCase):
         o.price = Decimal("50.1")
         db.update_order(o)
         o = db.get_order(o._id)
-        print("O:", o)
         self.assertEqual(Decimal("50.1"), o.price)
