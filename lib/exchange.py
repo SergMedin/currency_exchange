@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 
 class Exchange:
-    # FIXME: isn't it better to not store any orders in memory and go through the db on every event instead?
+    # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
     def __init__(self, db: Db, on_match=None):
         self._db = db
