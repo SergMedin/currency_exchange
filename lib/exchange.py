@@ -20,7 +20,7 @@ class Exchange:
         self._orders: dict[int, data.Order] = dict(orders)
 
     def on_new_order(self, o: data.Order) -> None:
-        if o.lifetime > ORDER_LIFETIME_LIMIT:
+        if o.lifetime_sec > ORDER_LIFETIME_LIMIT:
             raise ValueError("Order lifetime cannot exceed 48 hours")
 
         o = self._db.store_order(o)
@@ -39,7 +39,7 @@ class Exchange:
             None
         """
         current_time = time.time()
-        expired_orders = [o for o in self._orders.values() if (current_time - o.creation_time) > o.lifetime]
+        expired_orders = [o for o in self._orders.values() if (current_time - o.creation_time) > o.lifetime_sec]
         for o in expired_orders:
             self._remove_order(o._id)
 

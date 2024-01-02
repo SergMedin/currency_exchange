@@ -73,7 +73,7 @@ class _DbOrder(_Base):
     __tablename__ = "orders"
     id: Mapped[int] = mapped_column(primary_key=True)
     type: Mapped[int] = mapped_column()
-    lifetime: Mapped[int] = mapped_column(nullable=False)
+    lifetime_sec: Mapped[int] = mapped_column(nullable=False)
     creation_time: Mapped[int] = mapped_column(nullable=False)
     user_id: Mapped[int] = mapped_column(nullable=False)
     price_cents: Mapped[int] = mapped_column(nullable=False)
@@ -119,7 +119,7 @@ class _Table:
 _ORDERS_TABLE = _Table(Order, _DbOrder, lambda o: o._id, [
     _Field("_id", "id", None, None, True),
     _Field("type", "type", lambda x: int(x), lambda x: OrderType(x)),
-    _Field("lifetime", "lifetime"),
+    _Field("lifetime_sec", "lifetime_sec"),
     _Field("creation_time", "creation_time"),
     _Field("user", "user_id", lambda x: x.id, lambda x: User(x)),
     _Field("price", "price_cents", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
@@ -134,12 +134,12 @@ class _T(unittest.TestCase):
         self.db = SqlDb()
 
     def test_store_order(self):
-        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48.0)
+        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48.0)
         o = self.db.store_order(o)
         self.assertEqual(OrderType.SELL, o.type)
 
     def test_update(self):
-        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48.0)
+        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48.0)
         o = self.db.store_order(o)
         o.price = Decimal("50.1")
         self.db.update_order(o)
@@ -147,15 +147,15 @@ class _T(unittest.TestCase):
         self.assertEqual(Decimal("50.1"), o.price)
 
     def test_iterate(self):
-        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48.0))
-        self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime=48.0))
+        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48.0))
+        self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48.0))
         orders = []
         self.db.iterate_orders(lambda o: orders.append(o))
         self.assertEqual(2, len(orders))
 
     def test_remove(self):
-        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime=48.0))
-        o = self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime=48.0))
+        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48.0))
+        o = self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48.0))
         self.db.remove_order(o._id)
         orders = []
         self.db.iterate_orders(lambda o: orders.append(o))

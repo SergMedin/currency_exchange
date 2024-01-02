@@ -26,7 +26,7 @@ class Order:
         price (Decimal): The price at which the order is placed.
         amount_initial (Decimal): The initial amount of currency in the order.
         min_op_threshold (Decimal): The minimum operational threshold for the order.
-        lifetime (int): The lifetime of the order in seconds.
+        lifetime_sec (int): The lifetime of the order in seconds.
         creation_time (int, optional): The creation time of the order in seconds since the epoch.
         _id (int, optional): The unique identifier of the order.
         amount_left (Decimal, optional): The amount of currency left in the order.
@@ -37,7 +37,7 @@ class Order:
     price: Decimal
     amount_initial: Decimal
     min_op_threshold: Decimal = 0
-    lifetime: int = 48
+    lifetime_sec: int = 48
     creation_time: int = dataclasses.field(default_factory=lambda: int(time.time()))
     _id: int = None
     amount_left: Decimal = -1.0
