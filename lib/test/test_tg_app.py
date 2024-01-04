@@ -42,3 +42,15 @@ class TestTgApp(unittest.TestCase):
     def test_check_min_op_threshold_negative_value(self):
         self.tg.emulate_incoming_message(1, "SELL 1000 RUB * INVALID AMD min_amt -100")
         self.assertIn("Minimum operational threshold cannot be negative", self.tg.outgoing[0].text)
+
+    def order_create(self):
+        self.tg.emulate_incoming_message(1, "Новый заказ")
+        self.assertIn("Указите валюту заказа", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "SDFHJHF")
+        self.assertIn("Неверно", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "RUB")
+        self.assertIn("Укажите сумму заказа", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "999999пива")
+        self.assertIn("Ашипкам", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "100000")
+        self.assertIn("Укажите, что хотите купить", self.tg.outgoing[-1].text)
