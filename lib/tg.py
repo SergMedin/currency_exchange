@@ -2,10 +2,6 @@ from typing import Callable
 from .data import TgMsg
 import asyncio
 
-import os
-
-from dotenv import load_dotenv
-
 from telegram import (
     Update,
 )
@@ -54,26 +50,13 @@ class TelegramMock(Tg):
         self.incoming.append(m)
         if self.on_message:
             self.on_message(m)
-            # try:
-            #     self.on_message(m)
-            # except ValueError as e:
-            #     self.send_message(
-            #         TgMsg(
-            #             from_user_id,
-            #             from_user_name,
-            #             f"The message has an incorrect format: {str(e)}",
-            #         )
-            #     )
 
 
 class TelegramReal(Tg):
-    def __init__(self):
-        load_dotenv()
-        EXCH_TG_TOKEN = os.getenv("EXCH_TG_TOKEN")
-
+    def __init__(self, token: str):
         # TODO:
         #  - remove CommandHandler / use one Handler for all commands
-        self.application = Application.builder().token(EXCH_TG_TOKEN).build()
+        self.application = Application.builder().token(token).build()
         self.application.add_handler(CommandHandler("start", self._default_handler))
         self.application.add_handler(CommandHandler("add", self._default_handler))
         self.application.add_handler(CommandHandler("list", self._default_handler))
