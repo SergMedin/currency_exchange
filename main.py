@@ -5,5 +5,5 @@ from lib.db_sqla import SqlDb
 
 if __name__ == "__main__":
     telegram = TelegramReal()
-    app = TgApp(db=SqlDb("sqlite:///1.db"), tg=telegram)
+    app = TgApp(db=SqlDb("sqlite:///exchange_database.sqlite"), tg=telegram)
     telegram.run_forever()
