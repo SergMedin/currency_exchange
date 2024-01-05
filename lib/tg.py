@@ -7,18 +7,15 @@ from telegram import (
 )
 from telegram.ext import (
     Application,
-    CommandHandler,
     ContextTypes,
+    MessageHandler,
+    filters
 )
 
 OnMessageType = Callable[[TgMsg], None]
 
 
 class Tg:
-    def __init__(self):
-        # self._on_message = None
-        pass
-
     @property
     def on_message(self) -> OnMessageType:
         return self._on_message
@@ -38,9 +35,8 @@ class TelegramMock(Tg):
         self.incoming: list[TgMsg] = []
 
     def send_message(self, m: TgMsg):
-        # print("TG OUTGOING:", m)
         if not isinstance(m, TgMsg):
-            raise ValueError("SSSSSS")
+            raise ValueError()
         self.outgoing.append(m)
 
     def emulate_incoming_message(
@@ -54,13 +50,8 @@ class TelegramMock(Tg):
 
 class TelegramReal(Tg):
     def __init__(self, token: str):
-        # TODO:
-        #  - remove CommandHandler / use one Handler for all commands
         self.application = Application.builder().token(token).build()
-        self.application.add_handler(CommandHandler("start", self._default_handler))
-        self.application.add_handler(CommandHandler("add", self._default_handler))
-        self.application.add_handler(CommandHandler("list", self._default_handler))
-        self.application.add_handler(CommandHandler("remove", self._default_handler))
+        self.application.add_handler(MessageHandler(filters.TEXT, self._default_handler))
 
     def run_forever(self):
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
