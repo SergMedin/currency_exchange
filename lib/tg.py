@@ -69,11 +69,11 @@ class TelegramMock(Tg):
 class TelegramReal(Tg):
     def __init__(self):
         load_dotenv()
-        TG_TOKEN = os.getenv("TG_TOKEN")
+        EXCH_TG_TOKEN = os.getenv("EXCH_TG_TOKEN")
 
         # TODO:
         #  - remove CommandHandler / use one Handler for all commands
-        self.application = Application.builder().token(TG_TOKEN).build()
+        self.application = Application.builder().token(EXCH_TG_TOKEN).build()
         self.application.add_handler(CommandHandler("start", self._default_handler))
         self.application.add_handler(CommandHandler("add", self._default_handler))
         self.application.add_handler(CommandHandler("list", self._default_handler))
