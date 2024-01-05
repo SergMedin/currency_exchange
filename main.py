@@ -1,7 +1,9 @@
-from lib.tg import Tg
+from lib.tg import TelegramReal
 from lib.tg_app import TgApp
 from lib.db_sqla import SqlDb
 
 
 if __name__ == "__main__":
-    telegram = TgApp(db=SqlDb(), tg=Tg())
+    telegram = TelegramReal()
+    app = TgApp(db=SqlDb("sqlite:///1.db"), tg=telegram)
+    telegram.run_forever()

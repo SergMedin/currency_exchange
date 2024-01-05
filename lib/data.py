@@ -13,6 +13,7 @@ class OrderType(enum.IntEnum):
 @dataclasses.dataclass
 class User:
     id: int
+    name: str = ""
 
 
 @dataclasses.dataclass
@@ -62,6 +63,7 @@ class Match:
 @dataclasses.dataclass
 class TgMsg:
     user_id: int
+    user_name: str
     text: str
 
 

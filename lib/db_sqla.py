@@ -9,9 +9,8 @@ from .data import Order, OrderType, User
 
 
 class SqlDb(Db):
-
-    def __init__(self):
-        self._eng = create_engine("sqlite://", echo=False)
+    def __init__(self, conn_str: str = "sqlite://"):
+        self._eng = create_engine(conn_str, echo=False)
         _Base.metadata.create_all(self._eng)
 
     def get_order(self, id: int) -> Order:
@@ -75,14 +74,19 @@ class _DbOrder(_Base):
     type: Mapped[int] = mapped_column()
     lifetime_sec: Mapped[int] = mapped_column(nullable=False)
     creation_time: Mapped[int] = mapped_column(nullable=False)
-    user_id: Mapped[int] = mapped_column(nullable=False)
+    user: Mapped[str] = mapped_column(nullable=False)
     price_cents: Mapped[int] = mapped_column(nullable=False)
     amount_initial_cents: Mapped[int] = mapped_column(nullable=False)
     amount_left_cents: Mapped[int] = mapped_column(nullable=False)
     min_op_threshold_cents: Mapped[int] = mapped_column(nullable=False)
 
 
-_ValueConvertFunctionType = Callable[[Any,], Any]
+_ValueConvertFunctionType = Callable[
+    [
+        Any,
+    ],
+    Any,
+]
 
 
 @dataclasses.dataclass
@@ -116,17 +120,51 @@ class _Table:
         return d
 
 
-_ORDERS_TABLE = _Table(Order, _DbOrder, lambda o: o._id, [
-    _Field("_id", "id", None, None, True),
-    _Field("type", "type", lambda x: int(x), lambda x: OrderType(x)),
-    _Field("lifetime_sec", "lifetime_sec"),
-    _Field("creation_time", "creation_time"),
-    _Field("user", "user_id", lambda x: x.id, lambda x: User(x)),
-    _Field("price", "price_cents", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
-    _Field("amount_initial", "amount_initial_cents", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
-    _Field("amount_left", "amount_left_cents", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
-    _Field("min_op_threshold", "min_op_threshold_cents", lambda x: int(x*100), lambda x: x/Decimal(100.0)),
-])
+def parse_user_data(user_data: str) -> User:
+    if len(user_data.split(",")) != 2:
+        raise ValueError(f"Invalid user data: [{user_data}]")
+    id, name = user_data.split(",")
+    return User(int(id), name)
+
+
+_ORDERS_TABLE = _Table(
+    Order,
+    _DbOrder,
+    lambda o: o._id,
+    [
+        _Field("_id", "id", None, None, True),
+        _Field("type", "type", lambda x: int(x), lambda x: OrderType(x)),
+        _Field("lifetime_sec", "lifetime_sec"),
+        _Field("creation_time", "creation_time"),
+        _Field(
+            "user",
+            "user",
+            lambda x: f"{x.id},{x.name}",
+            lambda x: parse_user_data(x),
+        ),
+        _Field(
+            "price", "price_cents", lambda x: int(x * 100), lambda x: x / Decimal(100.0)
+        ),
+        _Field(
+            "amount_initial",
+            "amount_initial_cents",
+            lambda x: int(x * 100),
+            lambda x: x / Decimal(100.0),
+        ),
+        _Field(
+            "amount_left",
+            "amount_left_cents",
+            lambda x: int(x * 100),
+            lambda x: x / Decimal(100.0),
+        ),
+        _Field(
+            "min_op_threshold",
+            "min_op_threshold_cents",
+            lambda x: int(x * 100),
+            lambda x: x / Decimal(100.0),
+        ),
+    ],
+)
 
 
 class _T(unittest.TestCase):
@@ -134,12 +172,21 @@ class _T(unittest.TestCase):
         self.db = SqlDb()
 
     def test_store_order(self):
-        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48.0)
+        o = Order(
+            User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+        )
         o = self.db.store_order(o)
         self.assertEqual(OrderType.SELL, o.type)
 
     def test_update(self):
-        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48.0)
+        o = Order(
+            User(1, "Dima"),
+            OrderType.SELL,
+            98.0,
+            1299.0,
+            500.0,
+            lifetime_sec=48 * 60 * 60,
+        )
         o = self.db.store_order(o)
         o.price = Decimal("50.1")
         self.db.update_order(o)
@@ -147,15 +194,31 @@ class _T(unittest.TestCase):
         self.assertEqual(Decimal("50.1"), o.price)
 
     def test_iterate(self):
-        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48.0))
-        self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48.0))
+        self.db.store_order(
+            Order(
+                User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+            )
+        )
+        self.db.store_order(
+            Order(
+                User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+            )
+        )
         orders = []
         self.db.iterate_orders(lambda o: orders.append(o))
         self.assertEqual(2, len(orders))
 
     def test_remove(self):
-        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48.0))
-        o = self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48.0))
+        self.db.store_order(
+            Order(
+                User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+            )
+        )
+        o = self.db.store_order(
+            Order(
+                User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+            )
+        )
         self.db.remove_order(o._id)
         orders = []
         self.db.iterate_orders(lambda o: orders.append(o))
