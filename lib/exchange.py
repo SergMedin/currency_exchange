@@ -25,8 +25,12 @@ class Exchange:
 
         o = self._db.store_order(o)
         self._orders[o._id] = o
+        print(f'New order: {o}')
         self._check_order_lifetime()  # Removing expired orders
         self._process_matches()
+
+    def list_orders_for_user(self, user: data.User) -> list[data.Order]:
+        return [o for o in self._orders.values() if o.user == user]
 
     def _check_order_lifetime(self) -> None:
         """
@@ -86,11 +90,11 @@ class Exchange:
         bo.amount_left -= amount
         for o in (so, bo):
             if o.amount_left <= 0:
-                self._remove_order(o._id)
+                self.remove_order(o._id)
             elif o.amount_left <= o.min_op_threshold:
                 o.min_op_threshold = o.amount_left
 
-    def _remove_order(self, _id: int) -> None:
+    def remove_order(self, _id: int) -> None:
         del self._orders[_id]
         self._db.remove_order(_id)
 

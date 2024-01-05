@@ -37,7 +37,7 @@ class Order:
     price: Decimal
     amount_initial: Decimal
     min_op_threshold: Decimal = 0
-    lifetime_sec: int = 48
+    lifetime_sec: int = 48 * 60 * 60
     creation_time: int = dataclasses.field(default_factory=lambda: int(time.time()))
     _id: int = None
     amount_left: Decimal = -1.0
@@ -57,6 +57,12 @@ class Match:
     buy_order: Order
     price: Decimal
     amount: Decimal
+
+
+@dataclasses.dataclass
+class TgMsg:
+    user_id: int
+    text: str
 
 
 class T(unittest.TestCase):

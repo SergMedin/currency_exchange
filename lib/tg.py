@@ -1,11 +1,5 @@
-import dataclasses
 from typing import Callable
-
-
-@dataclasses.dataclass
-class TgMsg:
-    user_id: int
-    text: str
+from .data import TgMsg
 
 
 OnMessageType = Callable[[TgMsg], None]
@@ -13,7 +7,8 @@ OnMessageType = Callable[[TgMsg], None]
 
 class Tg:
     def __init__(self):
-        self._on_message = None
+        # self._on_message = None
+        pass
 
     @property
     def on_message(self) -> OnMessageType:
