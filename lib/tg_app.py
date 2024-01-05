@@ -1,10 +1,7 @@
-from .db import Db
-from .tg import Tg, TgMsg
-from .exchange import Exchange
-from .data import Match, Order, User, OrderType
+import asyncio
 from decimal import Decimal, InvalidOperation
-
 import os
+
 from dotenv import load_dotenv
 import datetime
 from telegram import (
@@ -15,6 +12,11 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes,
 )
+
+from .db import Db
+from .tg import Tg, TgMsg
+from .exchange import Exchange
+from .data import Match, Order, User, OrderType
 
 
 class TgApp:
@@ -65,11 +67,13 @@ class TgApp:
         # await update.message.reply_text(f'Not implemented. Your message: {update.message.text}')
         chat_id = update.effective_chat.id
         message_text = update.message.text
-        m = TgMsg(chat_id, message_text.split(' ', 1)[1])
+        m = TgMsg(chat_id, message_text.split(" ", 1)[1])
         try:
             self._on_incoming_tg_message(m)
         except ValueError as e:
-            await update.message.reply_text(f'The message has an incorrect format: {str(e)}')
+            await update.message.reply_text(
+                f"The message has an incorrect format: {str(e)}"
+            )
 
     async def _list(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         def _convert_to_utc(creation_time, lifetime_sec):
@@ -80,36 +84,42 @@ class TgApp:
         if len(orders) == 0:
             await update.message.reply_text("No orders")
         else:
-            text = 'Your orders:\n'
+            text = "Your orders:\n"
             for o in orders:
-
                 utc_final_dttm = _convert_to_utc(o.creation_time, o.lifetime_sec)
                 text += (
-                    '\tid:\t' + f'{o._id} ('
-                    + f'{o.type.name} {o.amount_left} RUB * {o.price} AMD '
-                    + f'min_amt {o.min_op_threshold} final_dttm {utc_final_dttm})\n'
+                    "\tid:\t"
+                    + f"{o._id} ("
+                    + f"{o.type.name} {o.amount_left} RUB * {o.price} AMD "
+                    + f"min_amt {o.min_op_threshold} final_dttm {utc_final_dttm})\n"
                 )
             await update.message.reply_text(text)
         # await update.message.reply_text('/list comand not implemented yet')
 
     async def _remove(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        remove_order_id = update.message.text.split(' ', 1)[1]
+        remove_order_id = update.message.text.split(" ", 1)[1]
         try:
             self._ex.remove_order(int(remove_order_id))
-            await update.message.reply_text(f'Order with id {remove_order_id} was removed')
+            await update.message.reply_text(
+                f"Order with id {remove_order_id} was removed"
+            )
         except ValueError as e:
-            await update.message.reply_text(f'The message has an incorrect format: {str(e)}')
+            await update.message.reply_text(
+                f"The message has an incorrect format: {str(e)}"
+            )
 
     def _on_incoming_tg_message(self, m: TgMsg):
         def _check_currencies(c1: str, c2: str) -> None:
-            if c1 not in ['rub'] or c2 not in ['amd']:
+            if c1 not in ["rub"] or c2 not in ["amd"]:
                 raise ValueError("Invalid currency")
 
         def _check_price(price: str) -> None:
             try:
                 price = Decimal(price)
-                if price != price.quantize(Decimal('0.00')):
-                    raise ValueError("Price has more than two digits after the decimal point")
+                if price != price.quantize(Decimal("0.00")):
+                    raise ValueError(
+                        "Price has more than two digits after the decimal point"
+                    )
             except InvalidOperation:
                 raise ValueError("Invalid value for Decimal")
 
@@ -121,7 +131,9 @@ class TgApp:
             if min_op_threshold < 0:
                 raise ValueError("Minimum operational threshold cannot be negative")
             if min_op_threshold > amount:
-                raise ValueError("Minimum operational threshold cannot be greater than the amount")
+                raise ValueError(
+                    "Minimum operational threshold cannot be greater than the amount"
+                )
 
         # ['buy', '1500', 'usd', '*', '98.1', 'rub', 'min_amt', '100']
         #  0      1       2      3    4       5      6          7
@@ -145,11 +157,13 @@ class TgApp:
         o = Order(User(m.user_id), ot, price, amount, min_op_threshold)
         self._ex.on_new_order(o)
 
-    async def _on_match(self, m: Match):
+    def _on_match(self, m: Match):
         buyer_id = m.buy_order.user.id
         seller_id = m.sell_order.user.id
         message_buyer = f"Go and buy {m.amount} from {seller_id} for {m.price} per unit"
-        message_seller = f"You should sell {m.amount} to {buyer_id} for {m.price} per unit"
+        message_seller = (
+            f"You should sell {m.amount} to {buyer_id} for {m.price} per unit"
+        )
         # self._tg.send_message(TgMsg(buyer_id, message_buyer))
         # self._tg.send_message(TgMsg(seller_id, message_seller))
-        bot.send_message(buyer_id, message_buyer)
+        asyncio.create_task(self.application.bot.send_message(buyer_id, message_buyer))
