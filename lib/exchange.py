@@ -1,7 +1,8 @@
-from .config import ORDER_LIFETIME_LIMIT
+from .config import ORDER_LIFETIME_LIMIT, ZMQ_ORDERS_LOG_ENDPOINT
 import time
 import dataclasses
 import unittest
+import zmq
 from .db import Db
 from . import data
 
@@ -17,12 +18,24 @@ class Exchange:
         self._db = db
         self._on_match = on_match
         orders = []
+        self._log_q = zmq.Context.instance().socket(zmq.PUB)
+        self._log_q.connect(ZMQ_ORDERS_LOG_ENDPOINT)
         self._db.iterate_orders(lambda o: orders.append((o._id, o)))
         self._orders: dict[int, data.Order] = dict(orders)
+
+    def dtor(self):
+        if self._log_q:
+            self._log_q.close()
+            self._log_q = None
+
+    def __del__(self):
+        self.dtor()
 
     def on_new_order(self, o: data.Order) -> None:
         if o.lifetime_sec > ORDER_LIFETIME_LIMIT:
             raise ValueError("Order lifetime cannot exceed 48 hours")
+
+        self._log("new", o)
 
         o = self._db.store_order(o)
         self._orders[o._id] = o
@@ -147,6 +160,9 @@ class Exchange:
                 f"{min_seller_text}"
             ),
         }
+
+    def _log(self, operation: str, order: data.Order) -> None:
+        self._log_q.send_string("Hello, world!")
 
 
 class T(unittest.TestCase):

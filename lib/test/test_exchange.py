@@ -16,6 +16,10 @@ class T(unittest.TestCase):
         self.matches = []
         self.exchange = Exchange(self.db, lambda m: self.matches.append(m))
 
+    def tearDown(self) -> None:
+        self.exchange.dtor()
+        return super().tearDown()
+
     def testConstruction(self):
         logger.debug('[ testConstruction ]'.center(80, '|'))
         Exchange(self.db, None)
@@ -80,7 +84,7 @@ class T(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.exchange.on_new_order(Order(user=User(1), type=OrderType.BUY, price=100.0,
                                        amount_initial=100.0, min_op_threshold=50.0, lifetime_sec=50*60*60))
-    
+
     def testGetStatsNoOrders(self):
         expected_result = {
             'data': {
