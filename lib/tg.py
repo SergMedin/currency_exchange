@@ -34,7 +34,7 @@ class TelegramMock(Tg):
         self.outgoing: list[TgMsg] = []
         self.incoming: list[TgMsg] = []
 
-    def send_message(self, m: TgMsg):
+    def send_message(self, m: TgMsg, parse_mode=None):
         if not isinstance(m, TgMsg):
             raise ValueError()
         self.outgoing.append(m)

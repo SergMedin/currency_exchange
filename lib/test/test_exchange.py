@@ -1,6 +1,8 @@
 import time
 import unittest
+import threading
 from ..exchange import Exchange
+from ..gsheets_loger import GSheetsLoger
 from ..db_sqla import SqlDb
 from ..data import Order, User, OrderType
 from decimal import Decimal
@@ -10,11 +12,18 @@ logger = get_logger(__name__)
 
 
 class T(unittest.TestCase):
+    lock = threading.RLock()
+    no = 0
 
     def setUp(self):
         self.db = SqlDb()
         self.matches = []
-        self.exchange = Exchange(self.db, lambda m: self.matches.append(m))
+        with T.lock:
+            seq_no = T.no
+            T.no += 1
+        endp = f"inproc://orders.log.{seq_no}"
+        self.exchange = Exchange(self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp)
+        self.loger = GSheetsLoger(zmq_endpoint=endp)
 
     def tearDown(self) -> None:
         self.exchange.dtor()

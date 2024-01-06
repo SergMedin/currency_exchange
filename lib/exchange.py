@@ -1,4 +1,4 @@
-from .config import ORDER_LIFETIME_LIMIT, ZMQ_ORDERS_LOG_ENDPOINT
+from .config import ORDER_LIFETIME_LIMIT
 import time
 import dataclasses
 import unittest
@@ -14,12 +14,13 @@ logger = get_logger(__name__)
 class Exchange:
     # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
-    def __init__(self, db: Db, on_match=None):
+    def __init__(self, db: Db, on_match=None, zmq_orders_log_endpoint=None):
         self._db = db
         self._on_match = on_match
         orders = []
-        self._log_q = zmq.Context.instance().socket(zmq.PUB)
-        self._log_q.connect(ZMQ_ORDERS_LOG_ENDPOINT)
+        self._log_q = zmq.Context.instance().socket(zmq.PUB) if zmq_orders_log_endpoint else None
+        if self._log_q:
+            self._log_q.bind(zmq_orders_log_endpoint)
         self._db.iterate_orders(lambda o: orders.append((o._id, o)))
         self._orders: dict[int, data.Order] = dict(orders)
 
@@ -162,7 +163,8 @@ class Exchange:
         }
 
     def _log(self, operation: str, order: data.Order) -> None:
-        self._log_q.send_string("Hello, world!")
+        if self._log_q:
+            self._log_q.send_string("Hello, world!")
 
 
 class T(unittest.TestCase):
