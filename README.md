@@ -28,7 +28,14 @@
 ## Tech
 - [Python] - Python 3.11
 
-## Installation
+## Docker-compose running:
+Fill the .env file and then run command:
+```sh
+sudo docker compose -f docker-compose.local.yml
+```
+The volume with name 'currency_exchange_pg_data' will persistently contain application data
+
+## Classic installation
 
 Upgrade packet manager and install virtual environment (recommended):  
 ```sh
