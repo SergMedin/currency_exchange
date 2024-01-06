@@ -27,6 +27,7 @@ class T(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.exchange.dtor()
+        self.loger.stop()
         return super().tearDown()
 
     def testConstruction(self):
