@@ -173,11 +173,11 @@ class TgApp:
         seller_id = m.sell_order.user.id
         seller_name = m.sell_order.user.name
         message_buyer = (
-            f"Go and buy {m.amount} from @{seller_name} for {m.price} per unit (you should send"
+            f"Go and buy {m.amount} RUB from @{seller_name} for {m.price} per unit (you should send"
             f" {m.price * m.amount:.2f} AMD, you will get {m.amount:.2f} RUB)"
         )
         message_seller = (
-            f"You should sell {m.amount} to @{buyer_name} for {m.price} per unit (you should send"
+            f"You should sell {m.amount} RUB to @{buyer_name} for {m.price} per unit (you should send"
             f" {m.amount:.2f} RUB, you will get {m.price * m.amount:.2f} AMD)"
         )
         self._tg.send_message(TgMsg(buyer_id, buyer_name, message_buyer))
