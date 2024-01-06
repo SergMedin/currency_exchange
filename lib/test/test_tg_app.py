@@ -26,9 +26,6 @@ class TestTgApp(unittest.TestCase):
         self.tg.emulate_incoming_message(
             2, "Dow", "/add BUY 1500 RUB * 98.01 AMD min_amt 100 lifetime_h 1"
         )
-        print("-" * 80)
-        print(self.tg.outgoing)
-        print("-" * 80)
         self.assertEqual(0, len(self.tg.outgoing))
 
     def test_simple_best_price(self):

@@ -17,7 +17,6 @@ class TgApp:
         self._ex = Exchange(self._db, self._on_match)
 
     def _on_incoming_tg_message(self, m: TgMsg):
-        print("INC TG MSG:", m)
 
         def _check_currencies(c1: str, c2: str) -> None:
             if c1 not in ["rub"] or c2 not in ["amd"]:
@@ -75,7 +74,6 @@ class TgApp:
                 # ['buy', '1500', 'usd', '*', '98.1', 'rub', 'min_amt', '100', 'lifetime_h', '48']
                 #  0      1       2      3    4       5      6          7       8            9
                 # pp = m.text.lower().strip().split(" ")
-                # print("INC TG MSG:", m, pp)
                 _check_amount(Decimal(pp[1]))
                 _check_min_op_threshold(Decimal(pp[1]), Decimal(pp[7]))
                 _check_price(pp[4])

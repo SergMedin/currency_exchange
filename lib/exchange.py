@@ -26,7 +26,6 @@ class Exchange:
 
         o = self._db.store_order(o)
         self._orders[o._id] = o
-        print(f"New order: {o}")
         self._check_order_lifetime()  # Removing expired orders
         self._process_matches()
 
