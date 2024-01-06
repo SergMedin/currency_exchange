@@ -3,6 +3,7 @@ import time
 import dataclasses
 import unittest
 import zmq
+import pickle
 from .db import Db
 from . import data
 
@@ -164,7 +165,12 @@ class Exchange:
 
     def _log(self, operation: str, order: data.Order) -> None:
         if self._log_q:
-            self._log_q.send_string("Hello, world!")
+            rec = {
+                "operation": operation,
+                "order": order
+            }
+            s = pickle.dumps(rec)
+            self._log_q.send(s)
 
 
 class T(unittest.TestCase):
