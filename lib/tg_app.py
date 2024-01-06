@@ -4,6 +4,7 @@ import datetime
 from .db import Db
 from .tg import Tg, TgMsg
 from .exchange import Exchange
+from .gsheets_loger import GSheetsLoger
 from .data import Match, Order, User, OrderType
 from .logger import get_logger
 
@@ -84,11 +85,13 @@ class Validator:
 class TgApp:
     # TODO:
     # - add lifetime to orders
-    def __init__(self, db: Db, tg: Tg):
+    def __init__(self, db: Db, tg: Tg, zmq_orders_log_endpoint=None):
         self._db = db
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
-        self._ex = Exchange(self._db, self._on_match)
+        self._ex = Exchange(self._db, self._on_match, zmq_orders_log_endpoint)
+        if zmq_orders_log_endpoint:
+            self._loger = GSheetsLoger(zmq_orders_log_endpoint)
         self._validator = Validator()
 
     def _send_message(self, user_id, user_name, message, parse_mode=None):

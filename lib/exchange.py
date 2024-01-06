@@ -2,6 +2,8 @@ from .config import ORDER_LIFETIME_LIMIT
 import time
 import dataclasses
 import unittest
+import zmq
+import pickle
 from .db import Db
 from . import data
 
@@ -13,16 +15,29 @@ logger = get_logger(__name__)
 class Exchange:
     # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
-    def __init__(self, db: Db, on_match=None):
+    def __init__(self, db: Db, on_match=None, zmq_orders_log_endpoint=None):
         self._db = db
         self._on_match = on_match
         orders = []
+        self._log_q = zmq.Context.instance().socket(zmq.PUB) if zmq_orders_log_endpoint else None
+        if self._log_q:
+            self._log_q.bind(zmq_orders_log_endpoint)
         self._db.iterate_orders(lambda o: orders.append((o._id, o)))
         self._orders: dict[int, data.Order] = dict(orders)
+
+    def dtor(self):
+        if self._log_q:
+            self._log_q.close()
+            self._log_q = None
+
+    def __del__(self):
+        self.dtor()
 
     def on_new_order(self, o: data.Order) -> None:
         if o.lifetime_sec > ORDER_LIFETIME_LIMIT:
             raise ValueError("Order lifetime cannot exceed 48 hours")
+
+        self._log("new", o)
 
         o = self._db.store_order(o)
         self._orders[o._id] = o
@@ -147,6 +162,15 @@ class Exchange:
                 f"{min_seller_text}"
             ),
         }
+
+    def _log(self, operation: str, order: data.Order) -> None:
+        if self._log_q:
+            rec = {
+                "operation": operation,
+                "order": order
+            }
+            s = pickle.dumps(rec)
+            self._log_q.send(s)
 
 
 class T(unittest.TestCase):
