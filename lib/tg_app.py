@@ -85,14 +85,19 @@ class Validator:
 class TgApp:
     # TODO:
     # - add lifetime to orders
-    def __init__(self, db: Db, tg: Tg, zmq_orders_log_endpoint=None):
+    def __init__(self, db: Db, tg: Tg, zmq_orders_log_endpoint=None, log_spreadsheet_key=None):
         self._db = db
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
         self._ex = Exchange(self._db, self._on_match, zmq_orders_log_endpoint)
         if zmq_orders_log_endpoint:
-            self._loger = GSheetsLoger(zmq_orders_log_endpoint)
+            assert log_spreadsheet_key is not None
+            self._loger = GSheetsLoger(zmq_orders_log_endpoint, log_spreadsheet_key)
+            self._loger.start()
         self._validator = Validator()
+
+    def shutdown(self):
+        self._loger.stop()
 
     def _send_message(self, user_id, user_name, message, parse_mode=None):
         self._tg.send_message(TgMsg(user_id, user_name, message), parse_mode=parse_mode)
