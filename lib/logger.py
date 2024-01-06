@@ -18,11 +18,10 @@ def get_logger(name):
         "%(asctime)s - %(name)s - %(levelname)s:\n %(message)s"
     )
     handler.setFormatter(formatter)
-
     logger.addHandler(handler)
 
     sqlalchemy_logger = logging.getLogger("sqlalchemy")  # Not in usage
-    sqlalchemy_logger.setLevel(logging.DEBUG)
+    sqlalchemy_logger.setLevel(logging.ERROR)
     sqlalchemy_logger.addHandler(handler)
 
     return logger

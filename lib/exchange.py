@@ -84,7 +84,7 @@ class Exchange:
         match = data.Match(
             dataclasses.replace(so),
             dataclasses.replace(bo),
-            round((so.price + bo.price) / 2, 2),
+            round((so.price + bo.price) / 2, 2),  # 4.545 -> 4.54
             amount,
         )
         logger.debug(f"match: {match}")
@@ -101,6 +101,52 @@ class Exchange:
     def remove_order(self, _id: int) -> None:
         del self._orders[_id]
         self._db.remove_order(_id)
+
+    def get_stats(self) -> dict:
+        sellers = [o for o in self._orders.values() if o.type == data.OrderType.SELL]
+        buyers = [o for o in self._orders.values() if o.type == data.OrderType.BUY]
+
+        if sellers:
+            sellers.sort(key=lambda x: x.price)
+            best_seller = sellers[0]
+            min_seller_price = best_seller.price
+            min_seller_min_op_threshold = best_seller.min_op_threshold
+            min_seller_text = (
+                f"best seller:\n  * price: {min_seller_price} AMD/RUB\n"
+                f"  * min_op_threshold: {min_seller_min_op_threshold} RUB"
+            )
+        else:
+            min_seller_text = "No sellers :("
+            min_seller_price = None
+            min_seller_min_op_threshold = None
+        if buyers:
+            buyers.sort(key=lambda x: -x.price)
+            best_buyer = buyers[0]
+            max_buyer_price = best_buyer.price
+            max_buyer_min_op_threshold = best_buyer.min_op_threshold
+            max_buyer_text = (
+                f"best buyer:\n  * price: {max_buyer_price} AMD/RUB\n"
+                f"  * min_op_threshold: {max_buyer_min_op_threshold} RUB"
+            )
+        else:
+            max_buyer_text = "No buyers :("
+            max_buyer_price = None
+            max_buyer_min_op_threshold = None
+
+        return {
+            'data': {
+                'order_cnt': len(self._orders),
+                'user_cnt': len(set([o.user.id for o in self._orders.values()])),
+                'max_buyer_price': max_buyer_price,
+                'max_buyer_min_op_threshold': max_buyer_min_op_threshold,
+                'min_seller_price': min_seller_price,
+                'min_seller_min_op_threshold': min_seller_min_op_threshold,
+            },
+            'text': (
+                f"{max_buyer_text}\n\n"
+                f"{min_seller_text}"
+            ),
+        }
 
 
 class T(unittest.TestCase):

@@ -64,8 +64,11 @@ class TelegramReal(Tg):
             update.effective_chat.username,
             update.message.text,
         )
-        self.on_message(message)
+        try:
+            self.on_message(message)
+        except ValueError as e:
+            await update.message.reply_text(f"Error: {str(e)}")
 
     def send_message(self, m: TgMsg):
         # print("TG OUTGOING:", m)
-        asyncio.create_task(self.application.bot.send_message(m.user_id, m.text))
+        asyncio.create_task(self.application.bot.send_message(m.user_id, m.text, parse_mode='Markdown'))

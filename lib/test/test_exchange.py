@@ -3,6 +3,7 @@ import unittest
 from ..exchange import Exchange
 from ..db_sqla import SqlDb
 from ..data import Order, User, OrderType
+from decimal import Decimal
 
 from ..logger import get_logger
 logger = get_logger(__name__)
@@ -79,3 +80,42 @@ class T(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.exchange.on_new_order(Order(user=User(1), type=OrderType.BUY, price=100.0,
                                        amount_initial=100.0, min_op_threshold=50.0, lifetime_sec=50*60*60))
+    
+    def testGetStatsNoOrders(self):
+        expected_result = {
+            'data': {
+                'order_cnt': 0,
+                'user_cnt': 0,
+                'max_buyer_price': None,
+                'max_buyer_min_op_threshold': None,
+                'min_seller_price': None,
+                'min_seller_min_op_threshold': None,
+            },
+            'text': "No buyers :(\n\nNo sellers :("
+        }
+        result = self.exchange.get_stats()
+        self.assertEqual(result, expected_result)
+
+    def testGetStatsWithOrders(self):
+        self.exchange.on_new_order(Order(User(1, 'Joe'), OrderType.SELL, 4.90, 1000, 500.0, lifetime_sec=48*60*60))
+        self.exchange.on_new_order(Order(User(2, 'Doe'), OrderType.BUY, 4.55, 2000, 1000.0, lifetime_sec=48*60*60))
+
+        expected_result = {
+            'data': {
+                'order_cnt': 2,
+                'user_cnt': 2,
+                'max_buyer_price': Decimal('4.55'),
+                'max_buyer_min_op_threshold': Decimal('1000'),
+                'min_seller_price': Decimal('4.9'),
+                'min_seller_min_op_threshold': Decimal('500'),
+            },
+            'text': (
+                "best buyer:\n  * price: 4.55 AMD/RUB\n"
+                "  * min_op_threshold: 1000 RUB\n\n"
+                "best seller:\n  * price: 4.9 AMD/RUB\n"
+                "  * min_op_threshold: 500 RUB"
+            )
+        }
+        result = self.exchange.get_stats()
+        print(result)
+        self.assertEqual(result, expected_result)
