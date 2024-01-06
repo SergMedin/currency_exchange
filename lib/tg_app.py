@@ -91,8 +91,8 @@ class TgApp:
         self._ex = Exchange(self._db, self._on_match)
         self._validator = Validator()
 
-    def _send_message(self, user_id, user_name, message):
-        self._tg.send_message(TgMsg(user_id, user_name, message))
+    def _send_message(self, user_id, user_name, message, parse_mode=None):
+        self._tg.send_message(TgMsg(user_id, user_name, message), parse_mode=parse_mode)
 
     def _on_incoming_tg_message(self, m: TgMsg):
         try:
@@ -104,7 +104,7 @@ class TgApp:
             params = pp[1:]
 
             if command == '/start':
-                self._send_message(m.user_id, m.user_name, tg_start_message)
+                self._send_message(m.user_id, m.user_name, tg_start_message, parse_mode='Markdown')
             elif command == '/add':
                 self._handle_add_command(m, params)
             elif command == '/list':
