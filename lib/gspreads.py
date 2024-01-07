@@ -12,16 +12,21 @@ class GSpreadsTable:
     _gapi_tables: dict[str, Any] = {}
     _gapi_credentials_filepath: str = None
 
-    def __init__(self, credentials_filepath, table_key):
-        self._gapi_credentials_filepath = credentials_filepath
+    def __init__(self, credentials_filepath, table_key, sheet_title: str = None):
+        assert sheet_title is not None
+        with self.__class__._gapi_lock:
+            self.__class__._gapi_credentials_filepath = credentials_filepath
         self.table = self._get_table(table_key)
-        self.sheet1 = self.table.sheet1
+        self.sheet = self.table.sheet1 if sheet_title is None else self.table.worksheet(sheet_title)
 
     def update_cell(self, row: int, col: int, val: str):
-        self.sheet1.update_cell(row, col, val)
+        self.sheet.update_cell(row, col, val)
+
+    def update(self, range_name: str, values: List[List[Any]]):
+        self.sheet.update(range_name=range_name, values=values)
 
     def cell(self, row: int, col: int) -> str:
-        return self.sheet1.update_cell(row, col).value
+        return self.sheet.cell(row, col).value
 
     @classmethod
     def _get_table(cls, table_key):
@@ -44,6 +49,7 @@ class _Cell:
 class GSpreadsTableMock:
     def __init__(self):
         self._d: Dict[Tuple[int, int], _Cell] = {}
+        self._sheets: List[str] = ['Sheet1']
 
     def update_cell(self, row: int, col: int, val: str):
         assert isinstance(row, int)

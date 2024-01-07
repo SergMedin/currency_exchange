@@ -6,6 +6,7 @@ from ..db_sqla import SqlDb
 from ..data import Order, User, OrderType
 from ..gsheets_loger import GSheetsLoger
 from decimal import Decimal
+import os
 
 from ..logger import get_logger
 logger = get_logger(__name__)
@@ -23,7 +24,9 @@ class T(unittest.TestCase):
             T.no += 1
         endp = f"inproc://orders.log.{seq_no}"
         self.exchange = Exchange(self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp)
-        self.loger = GSheetsLoger(zmq_endpoint=endp)
+        gsk = os.getenv("GOOGLE_SPREADSHEET_KEY", None)
+        gsst = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
+        self.loger = GSheetsLoger(endp, gsk, gsst)
         self.loger.start()
 
     def tearDown(self) -> None:

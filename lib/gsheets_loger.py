@@ -12,7 +12,7 @@ class GSheetsLoger:
     _lock = threading.RLock()
     iii = 1
 
-    def __init__(self, zmq_endpoint: str, spreadsheet_key=None):
+    def __init__(self, zmq_endpoint: str, spreadsheet_key=None, sheet_title=None):
         self._stop_flag = False
         self._sub_sock = zmq.Context.instance().socket(zmq.SUB)
         self._sub_sock.connect(zmq_endpoint)
@@ -20,7 +20,7 @@ class GSheetsLoger:
         self._thread: threading.Thread = None
         if spreadsheet_key:
             credentials_filepath = os.getenv("GCLOUD_ACC_CREDENTIALS_FILE", "useful-mile-334600-ce60f5954ea9.json")
-            self._gst = GSpreadsTable(credentials_filepath, spreadsheet_key)
+            self._gst = GSpreadsTable(credentials_filepath, spreadsheet_key, sheet_title)
         else:
             self._gst = GSpreadsTableMock()
 
@@ -51,10 +51,11 @@ class GSheetsLoger:
                 o.user.id,
                 o.user.name,
                 o.type.name,
-                str(o.price),
-                str(o.amount_initial),
-                str(o.amount_left),
-                str(o.min_op_threshold),
+                float(o.price),  # FIXME: learn the right way to make correct decimal values in Google Sheets
+                float(o.amount_initial),
+                float(o.amount_left),
+                float(o.min_op_threshold),
+                o.lifetime_sec / 3600.0,
             ]
             sheet.update(range_name, [row])
             GSheetsLoger.iii += 1
