@@ -171,7 +171,7 @@ class TgApp:
 
     @staticmethod
     def _convert_to_utc(creation_time, lifetime_sec):
-        return datetime.datetime.utcfromtimestamp(creation_time + lifetime_sec)
+        return datetime.datetime.fromtimestamp(creation_time + lifetime_sec, datetime.UTC)
 
     def _on_match(self, m: Match):
         buyer_id = m.buy_order.user.id
