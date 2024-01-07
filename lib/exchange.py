@@ -115,13 +115,13 @@ class Exchange:
                     else:
                         buyer.min_op_threshold = min(buyer.amount_left, buyer.min_op_threshold)
 
-                    # Breaking out of the loop if the current order is fully matched
-                    if seller.amount_left <= 0 or buyer.amount_left <= 0:
+                    # If the seller's amount_left is less than or equal to 0, move on to the next seller
+                    if seller.amount_left <= 0:  # or buyer.amount_left <= 0:
                         break
 
             # If the seller's order is fully matched, move on to the next seller
-            if seller.amount_left <= 0:
-                continue
+            # if seller.amount_left <= 0:
+            #     continue
 
     def remove_order(self, _id: int) -> None:
         del self._orders[_id]

@@ -52,6 +52,18 @@ class T(unittest.TestCase):
         self.assertEqual(self.matches[1].sell_order.amount_left, 0)
         self.assertEqual(self.matches[1].buy_order.amount_left, 0)
 
+    def testProcessMatchesMultipleMatches2(self):
+        self.exchange.on_new_order(Order(User(1), OrderType.BUY, 10.0, 50.0, 50.0, lifetime_sec=48*60*60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 50.0, 50.0, lifetime_sec=48*60*60))
+        self.assertEqual(len(self.exchange._orders), 2)
+        self.exchange.on_new_order(Order(User(3), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48*60*60))
+        self.assertEqual(len(self.matches), 2)
+        self.assertEqual(len(self.exchange._orders), 0)
+        self.assertEqual(self.matches[0].sell_order.amount_left, 50)
+        self.assertEqual(self.matches[0].buy_order.amount_left, 0)
+        self.assertEqual(self.matches[1].sell_order.amount_left, 0)
+        self.assertEqual(self.matches[1].buy_order.amount_left, 0)
+
     def testProcessMatchesPartialMatch(self):
         self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 50.0, 50.0, lifetime_sec=48*60*60))
         self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 150.0, 25.0, lifetime_sec=48*60*60))
