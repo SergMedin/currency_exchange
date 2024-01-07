@@ -1,5 +1,3 @@
-- разделить /start и /help
-
 - Capability to work in a Telegram group
 - The application should write logs to a file
 - If a user's request has expired, notify them about it

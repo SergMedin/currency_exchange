@@ -11,9 +11,6 @@ from .logger import get_logger
 
 logger = get_logger(__name__)
 
-with open("./lib/tg_messages/start_message.md", "r") as f:
-    tg_start_message = f.read().strip()
-
 
 class Validator:
     def validate_add_command_params(self, params):
@@ -112,7 +109,13 @@ class TgApp:
             params = pp[1:]
 
             if command == '/start':
+                with open("./lib/tg_messages/start_message.md", "r") as f:
+                    tg_start_message = f.read().strip()
                 self._send_message(m.user_id, m.user_name, tg_start_message, parse_mode='Markdown')
+            elif command == '/help':
+                with open("./lib/tg_messages/help_message.md", "r") as f:
+                    tg_help_message = f.read().strip()
+                self._send_message(m.user_id, m.user_name, tg_help_message, parse_mode='Markdown')
             elif command == '/add':
                 self._handle_add_command(m, params)
             elif command == '/list':
@@ -173,7 +176,7 @@ class TgApp:
 
     @staticmethod
     def _convert_to_utc(creation_time, lifetime_sec):
-        return datetime.datetime.utcfromtimestamp(creation_time + lifetime_sec)
+        return datetime.datetime.fromtimestamp(creation_time + lifetime_sec, datetime.UTC)
 
     def _on_match(self, m: Match):
         buyer_id = m.buy_order.user.id
