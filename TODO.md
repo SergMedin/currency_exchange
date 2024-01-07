@@ -1,4 +1,6 @@
+- проверить, что уменьшается сумма после частичной сделки 150 vs 50 -> 100 vs 200
 - разделить /start и /help
+- тест есть две заявки по 25 и одна на 50. Должно быть два матча.
 
 - Capability to work in a Telegram group
 - The application should write logs to a file
