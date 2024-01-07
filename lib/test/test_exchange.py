@@ -4,7 +4,9 @@ import threading
 from ..exchange import Exchange
 from ..db_sqla import SqlDb
 from ..data import Order, User, OrderType
+from ..gsheets_loger import GSheetsLoger
 from decimal import Decimal
+import os
 
 from ..logger import get_logger
 logger = get_logger(__name__)
@@ -22,11 +24,14 @@ class T(unittest.TestCase):
             T.no += 1
         endp = f"inproc://orders.log.{seq_no}"
         self.exchange = Exchange(self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp)
-        # self.loger = GSheetsLoger(zmq_endpoint=endp)
+        gsk = os.getenv("GOOGLE_SPREADSHEET_KEY", None)
+        gsst = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
+        self.loger = GSheetsLoger(endp, gsk, gsst)
+        self.loger.start()
 
     def tearDown(self) -> None:
         self.exchange.dtor()
-        # self.loger.stop()
+        self.loger.stop()
         return super().tearDown()
 
     def testConstruction(self):
@@ -173,3 +178,11 @@ class T(unittest.TestCase):
         }
         result = self.exchange.get_stats()['data']
         self.assertEqual(result, expected_result)
+
+    def test_loger_simple(self):
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48*60*60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1299.0, 500.0, lifetime_sec=48*60*60))
+        self.assertEqual(len(self.matches), 1)
+        time.sleep(0.1)
+        t = self.loger._gst
+        self.assertEqual(t.cell(self.loger._curr_row-1, 2), "new_order")

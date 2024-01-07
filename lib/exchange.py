@@ -38,9 +38,8 @@ class Exchange:
         if o.lifetime_sec > ORDER_LIFETIME_LIMIT:
             raise ValueError("Order lifetime cannot exceed 48 hours")
 
-        self._log("new", o)
-
         o = self._db.store_order(o)
+        self._log("new", o)
         self._orders[o._id] = o
         self._check_order_lifetime()  # Removing expired orders
         self._process_matches()
@@ -199,12 +198,8 @@ class Exchange:
 
     def _log(self, operation: str, order: data.Order) -> None:
         if self._log_q:
-            rec = {
-                "operation": operation,
-                "order": order
-            }
-            s = pickle.dumps(rec)
-            self._log_q.send(s)
+            rec = data.Operation(data.OperationType.NEW_ORDER, order)
+            self._log_q.send(pickle.dumps(rec))
 
 
 class T(unittest.TestCase):

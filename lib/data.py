@@ -67,6 +67,17 @@ class TgMsg:
     text: str
 
 
+class OperationType(enum.StrEnum):
+    NEW_ORDER = "new_order"
+    UPDATE = "update"
+
+
+@dataclasses.dataclass
+class Operation:
+    type: OperationType
+    order: Order
+
+
 class T(unittest.TestCase):
     def testT(self):
         pass
