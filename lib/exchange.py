@@ -24,6 +24,7 @@ class Exchange:
             self._log_q.bind(zmq_orders_log_endpoint)
         self._db.iterate_orders(lambda o: orders.append((o._id, o)))
         self._orders: dict[int, data.Order] = dict(orders)
+        self.last_match_price = None
 
     def dtor(self):
         if self._log_q:
@@ -88,6 +89,9 @@ class Exchange:
                 ):
                     match_amount = min(buyer.amount_left, seller.amount_left)
                     mid_price = round((seller.price + buyer.price) / 2, 2)
+                    seller.amount_left -= match_amount
+                    buyer.amount_left -= match_amount
+                    self.last_match_price = mid_price
 
                     match = data.Match(
                         dataclasses.replace(seller),
@@ -95,12 +99,10 @@ class Exchange:
                         mid_price,
                         match_amount,
                     )
+
                     logger.debug(f"match: {match}")
                     if self._on_match:
                         self._on_match(match)
-
-                    seller.amount_left -= match_amount
-                    buyer.amount_left -= match_amount
 
                     # Remove order if amount_left is less than or equal to 0
                     if seller.amount_left <= 0:
@@ -129,32 +131,46 @@ class Exchange:
         sellers = [o for o in self._orders.values() if o.type == data.OrderType.SELL]
         buyers = [o for o in self._orders.values() if o.type == data.OrderType.BUY]
 
+        total_amount_sellers = sum(o.amount_left for o in sellers)
+        total_amount_buyers = sum(o.amount_left for o in buyers)
+
         if sellers:
             sellers.sort(key=lambda x: x.price)
             best_seller = sellers[0]
             min_seller_price = best_seller.price
             min_seller_min_op_threshold = best_seller.min_op_threshold
             min_seller_text = (
-                f"best seller:\n  * price: {min_seller_price} AMD/RUB\n"
+                f"best seller:\n"
+                f"  * price: {min_seller_price} AMD/RUB\n"
                 f"  * min_op_threshold: {min_seller_min_op_threshold} RUB"
             )
         else:
             min_seller_text = "No sellers :("
             min_seller_price = None
             min_seller_min_op_threshold = None
+            total_amount_sellers = 0
+
         if buyers:
             buyers.sort(key=lambda x: -x.price)
             best_buyer = buyers[0]
             max_buyer_price = best_buyer.price
             max_buyer_min_op_threshold = best_buyer.min_op_threshold
             max_buyer_text = (
-                f"best buyer:\n  * price: {max_buyer_price} AMD/RUB\n"
+                f"best buyer:\n"
+                f"  * price: {max_buyer_price} AMD/RUB\n"
                 f"  * min_op_threshold: {max_buyer_min_op_threshold} RUB"
             )
         else:
             max_buyer_text = "No buyers :("
             max_buyer_price = None
             max_buyer_min_op_threshold = None
+            total_amount_buyers = 0
+
+        last_match_price_text = "LAST MATCH PRICE:\n" + (
+            f"{self.last_match_price} AMD/RUB"
+            if self.last_match_price
+            else "No matches yet"
+        )
 
         return {
             'data': {
@@ -164,9 +180,19 @@ class Exchange:
                 'max_buyer_min_op_threshold': max_buyer_min_op_threshold,
                 'min_seller_price': min_seller_price,
                 'min_seller_min_op_threshold': min_seller_min_op_threshold,
+                'total_amount_sellers': total_amount_sellers,
+                'total_amount_buyers': total_amount_buyers,
+                'last_match_price': self.last_match_price,
             },
             'text': (
+                f"{last_match_price_text}\n\n"
+                f"BUYERS:\n"
+                f"Total amount (all buyers): "
+                f"{total_amount_buyers if total_amount_buyers < 1_000_000 else '1M+'} RUB\n"
                 f"{max_buyer_text}\n\n"
+                f"SELLERS:\n"
+                f"Total amount (all sellers): "
+                f"{total_amount_sellers if total_amount_sellers < 1_000_000 else '1M+'} RUB\n"
                 f"{min_seller_text}"
             ),
         }
