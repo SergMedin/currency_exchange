@@ -5,12 +5,7 @@ import asyncio
 from telegram import (
     Update,
 )
-from telegram.ext import (
-    Application,
-    ContextTypes,
-    MessageHandler,
-    filters
-)
+from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 OnMessageType = Callable[[TgMsg], None]
 
@@ -34,7 +29,7 @@ class TelegramMock(Tg):
         self.outgoing: list[TgMsg] = []
         self.incoming: list[TgMsg] = []
 
-    def send_message(self, m: TgMsg):
+    def send_message(self, m: TgMsg, parse_mode=None):
         if not isinstance(m, TgMsg):
             raise ValueError()
         self.outgoing.append(m)
@@ -51,7 +46,9 @@ class TelegramMock(Tg):
 class TelegramReal(Tg):
     def __init__(self, token: str):
         self.application = Application.builder().token(token).build()
-        self.application.add_handler(MessageHandler(filters.TEXT, self._default_handler))
+        self.application.add_handler(
+            MessageHandler(filters.TEXT, self._default_handler)
+        )
 
     def run_forever(self):
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
@@ -64,8 +61,13 @@ class TelegramReal(Tg):
             update.effective_chat.username,
             update.message.text,
         )
-        self.on_message(message)
+        try:
+            self.on_message(message)
+        except ValueError as e:
+            await update.message.reply_text(f"Error: {str(e)}")
 
-    def send_message(self, m: TgMsg):
+    def send_message(self, m: TgMsg, parse_mode=None):
         # print("TG OUTGOING:", m)
-        asyncio.create_task(self.application.bot.send_message(m.user_id, m.text))
+        asyncio.create_task(
+            self.application.bot.send_message(m.user_id, m.text, parse_mode=parse_mode)
+        )
