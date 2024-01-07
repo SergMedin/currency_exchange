@@ -16,17 +16,33 @@ class GSpreadsTable:
         assert sheet_title is not None
         with self.__class__._gapi_lock:
             self.__class__._gapi_credentials_filepath = credentials_filepath
-        self.table = self._get_table(table_key)
-        self.sheet = self.table.sheet1 if sheet_title is None else self.table.worksheet(sheet_title)
+            self.table = self._get_table(table_key)
+            self.sheet = self.table.sheet1 if sheet_title is None else self.table.worksheet(sheet_title)
 
     def update_cell(self, row: int, col: int, val: str):
-        self.sheet.update_cell(row, col, val)
+        with self.__class__._gapi_lock:
+            self.sheet.update_cell(row, col, val)
 
     def update(self, range_name: str, values: List[List[Any]]):
-        self.sheet.update(range_name=range_name, values=values)
+        with self.__class__._gapi_lock:
+            self.sheet.update(range_name=range_name, values=values)
 
     def cell(self, row: int, col: int) -> str:
-        return self.sheet.cell(row, col).value
+        with self.__class__._gapi_lock:
+            return self.sheet.cell(row, col).value
+
+    def find(self, query, in_row=None, in_column=None, case_sensitive=True):
+        with self.__class__._gapi_lock:
+            return self.sheet.find(query, in_row, in_column, case_sensitive)
+
+    def next_available_row(self):
+        with self.__class__._gapi_lock:
+            str_list = list(self.sheet.col_values(1))
+            return len(str_list) + 1
+
+    def freeze(self, rows=None, cols=None):
+        with self.__class__._gapi_lock:
+            self.sheet.freeze(rows, cols)
 
     @classmethod
     def _get_table(cls, table_key):
@@ -42,6 +58,8 @@ class GSpreadsTable:
 
 @dataclasses.dataclass
 class _Cell:
+    row: int
+    col: int
     value: Any
     format: Dict = dataclasses.field(default_factory=dict)
 
@@ -55,7 +73,7 @@ class GSpreadsTableMock:
         assert isinstance(row, int)
         assert isinstance(col, int)
         p = (row, col)
-        self._d[p] = _Cell(val)
+        self._d[p] = _Cell(row, col, val)
 
     def update(self, range_name: str, values: List[List[Any]]):
         assert range_name[0] >= "A" and range_name[0] <= "Z"
@@ -71,6 +89,30 @@ class GSpreadsTableMock:
             return self._d[p].value
         else:
             return None
+
+    def next_available_row(self):
+        return self.find("", None, 1).row
+
+    def find(self, query, in_row=None, in_column=None, case_sensitive=True):
+        cells = self._d.values()
+        if in_column:
+            cells = [c for c in cells if c.col == in_column]
+        if in_row:
+            cells = [c for c in cells if c.row == in_row]
+
+        if query == "" and in_column:
+            max_row = max(c.row for c in cells) if cells else 0
+            row = max_row + 1
+            return _Cell(row, in_column, "")
+
+        if query == "" and in_row:
+            raise NotImplementedError()
+
+        cells = [c for c in cells if c.value == query]
+        return cells[0] if cells else None
+
+    def freeze(self, rows=None, cols=None):
+        pass
 
 
 class TestGspreadMock(unittest.TestCase):

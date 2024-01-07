@@ -185,4 +185,4 @@ class T(unittest.TestCase):
         self.assertEqual(len(self.matches), 1)
         time.sleep(0.1)
         t = self.loger._gst
-        self.assertEqual(t.cell(GSheetsLoger.iii-1, 2), "new_order")
+        self.assertEqual(t.cell(self.loger._curr_row-1, 2), "new_order")
