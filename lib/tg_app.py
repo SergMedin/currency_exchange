@@ -131,6 +131,7 @@ class TgApp:
             self._send_message(m.user_id, m.user_name, f"Error: {str(e)}")
 
     def _handle_stat_command(self, m: TgMsg):
+        self._ex._check_order_lifetime()
         text = self._ex.get_stats()['text']
         self._send_message(m.user_id, m.user_name, text)
 
@@ -156,7 +157,7 @@ class TgApp:
     def _handle_list_command(self, m: TgMsg):
         orders = self._ex.list_orders_for_user(User(m.user_id, m.user_name))
         if not orders:
-            self._send_message(m.user_id, m.user_name, "No orders")
+            self._send_message(m.user_id, m.user_name, "You don't have any active orders")
         else:
             text = "Your orders:\n" + "\n".join(
                 [

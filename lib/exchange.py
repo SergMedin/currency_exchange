@@ -24,7 +24,7 @@ class Exchange:
             self._log_q.bind(zmq_orders_log_endpoint)
         self._db.iterate_orders(lambda o: orders.append((o._id, o)))
         self._orders: dict[int, data.Order] = dict(orders)
-        self.last_match_price = None
+        self.last_match_price = self._db.get_last_match_price()
 
     def dtor(self):
         if self._log_q:
@@ -90,7 +90,11 @@ class Exchange:
                     mid_price = round((seller.price + buyer.price) / 2, 2)
                     seller.amount_left -= match_amount
                     buyer.amount_left -= match_amount
+                    self._db.update_order(seller)
+                    self._db.update_order(buyer)
+
                     self.last_match_price = mid_price
+                    self._db.store_last_match_price(mid_price)
 
                     match = data.Match(
                         dataclasses.replace(seller),

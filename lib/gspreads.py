@@ -13,7 +13,7 @@ class GSpreadsTable:
     _gapi_credentials_filepath: str = None
 
     def __init__(self, credentials_filepath, table_key, sheet_title: str = None):
-        assert sheet_title is not None
+        # assert sheet_title is not None  # Andrey asked to remove this assert
         with self.__class__._gapi_lock:
             self.__class__._gapi_credentials_filepath = credentials_filepath
             self.table = self._get_table(table_key)
