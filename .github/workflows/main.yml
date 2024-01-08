@@ -72,6 +72,7 @@ jobs:
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USER }}
+        port: ${{ secrets.PORT }}
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         source: "docker-compose.yml"
