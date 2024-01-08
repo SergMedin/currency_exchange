@@ -96,7 +96,7 @@ class TestTgApp(unittest.TestCase):
             1, "Joe", "/list"
         )
         self.assertEqual(1, len(self.tg.outgoing))
-        self.assertEqual('No orders', self.tg.outgoing[-1].text)
+        self.assertEqual("You don't have any active orders", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(
             1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt 100 lifetime_h 1"
         )

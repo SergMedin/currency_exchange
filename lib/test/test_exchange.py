@@ -90,12 +90,6 @@ class T(unittest.TestCase):
         self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 120.0, 75.0, lifetime_sec=48*60*60))
         self.assertEqual(self.exchange._orders[2].min_op_threshold, 20.0)
 
-    def testPersistance(self):
-        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48*60*60))
-        self.exchange = Exchange(self.db, lambda m: self.matches.append(m))
-        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1299.0, 500.0, lifetime_sec=48*60*60))
-        self.assertEqual(len(self.matches), 1)
-
     def testDifferentPricesSellMoreThanBuy(self):
         logger.debug('[ testDifferentPricesSellMoreThanBuy ]'.center(80, '|'))
         self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 1299.0, 500.0, lifetime_sec=48*60*60))
@@ -186,3 +180,46 @@ class T(unittest.TestCase):
         time.sleep(0.1)
         t = self.loger._gst
         self.assertEqual(t.cell(self.loger._curr_row-1, 2), "new_order")
+
+
+class ExchangeTestsWithDatabaseFile(unittest.TestCase):
+    lock = threading.RLock()
+    no = 0
+
+    def setUp(self):
+        self.db = SqlDb(conn_str='sqlite:///unittest_database.sqlite')
+        self.matches = []
+        with T.lock:
+            seq_no = T.no
+            T.no += 1
+        endp = f"inproc://orders.log.{seq_no}"
+        self.exchange = Exchange(self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp)
+        gsk = os.getenv("GOOGLE_SPREADSHEET_KEY", None)
+        gsst = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
+        self.loger = GSheetsLoger(endp, gsk, gsst)
+        self.loger.start()
+
+    def tearDown(self):
+        if os.path.exists('unittest_database.sqlite'):
+            os.remove('unittest_database.sqlite')
+
+        self.exchange.dtor()
+        self.loger.stop()
+        return super().tearDown()
+
+    def testPersistance(self):
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 98.0, 1400.0, 100.0, lifetime_sec=48*60*60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1000.0, 100.0, lifetime_sec=48*60*60))
+        self.assertEqual(len(self.exchange._orders), 1)
+        self.matches = []
+        self.exchange = Exchange(self.db, lambda m: self.matches.append(m))
+        self.assertEqual(len(self.exchange._orders), 1)
+        print(self.exchange._orders)
+        self.assertEqual(self.exchange._orders[1].amount_initial, 1400)
+        self.assertEqual(self.exchange._orders[1].amount_left, 400)
+        self.exchange.on_new_order(Order(User(3), OrderType.BUY, 98.0, 400.0, 100.0, lifetime_sec=48*60*60))
+        # print('-'*80)
+        # print(self.matches)
+        # print('-'*80)
+        self.assertEqual(len(self.matches), 1)
+        self.assertEqual(len(self.exchange._orders), 0)

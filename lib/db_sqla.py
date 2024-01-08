@@ -63,6 +63,20 @@ class SqlDb(Db):
                 o = table.do_class(**d)
                 callback(o)
 
+    def store_last_match_price(self, price: Decimal):
+        with Session(self._eng) as session:
+            session.query(_DbLastMatchPrice).delete()
+            last_match_price = _DbLastMatchPrice(price=price)
+            session.add(last_match_price)
+            session.commit()
+
+    def get_last_match_price(self) -> Decimal:
+        with Session(self._eng) as session:
+            last_match_price = session.query(_DbLastMatchPrice).one_or_none()
+            if last_match_price is None:
+                return None
+            return last_match_price.price.quantize(Decimal("0.01"))
+
 
 class _Base(DeclarativeBase):
     pass
@@ -79,6 +93,12 @@ class _DbOrder(_Base):
     amount_initial_cents: Mapped[int] = mapped_column(nullable=False)
     amount_left_cents: Mapped[int] = mapped_column(nullable=False)
     min_op_threshold_cents: Mapped[int] = mapped_column(nullable=False)
+
+
+class _DbLastMatchPrice(_Base):
+    __tablename__ = "last_match_price"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    price: Mapped[Decimal] = mapped_column(nullable=False)
 
 
 _ValueConvertFunctionType = Callable[
@@ -223,3 +243,14 @@ class _T(unittest.TestCase):
         orders = []
         self.db.iterate_orders(lambda o: orders.append(o))
         self.assertEqual(1, len(orders))
+
+    def test_store_and_get_last_match_price(self):
+        self.db.store_last_match_price(Decimal("120.50"))
+        last_price = self.db.get_last_match_price()
+        self.assertEqual(Decimal("120.50"), last_price)
+
+    def test_update_last_deal_price(self):
+        self.db.store_last_match_price(Decimal("120.50"))
+        self.db.store_last_match_price(Decimal("130.75"))
+        last_price = self.db.get_last_match_price()
+        self.assertEqual(Decimal("130.75"), last_price)
