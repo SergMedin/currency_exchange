@@ -15,10 +15,10 @@ from lib.gspreads import GSpreadsTable, GSpreadsTableMock
 
 @dataclasses.dataclass
 class GoogleSheetsConfig:
-    mock: GSpreadsTableMock = None
     credential_filepath: str = None
     spreadsheet_key: str = None
     worksheet_title: str = None
+    mock: GSpreadsTableMock = None
 
 
 @dataclasses.dataclass
@@ -45,6 +45,7 @@ class ShoesShopApp:
         self._tg.on_message = self._on_incoming_tg_message
         c = gsheets_config
         if c and c.credential_filepath and not c.mock:
+            logging.info("connecting Sheets API")
             self.gs = GSpreadsTable(c.credential_filepath, c.spreadsheet_key, c.worksheet_title)
         else:
             self.gs = GSpreadsTableMock() if not c or c.mock is None else c.mock
@@ -52,12 +53,29 @@ class ShoesShopApp:
         self._load_data()
 
     def _on_incoming_tg_message(self, m: TgMsg):
-        print("BOOTSGHOP: new tg msg:", m)
-        self._tg.send_message(TgMsg(m.user_id, m.user_name, "I am a bit stupid yet"))
+        logging.info(f"New tg msg: {m}")
+        try:
+            pp = m.text.split()
+            first = pp[0].lower()
+            if first.startswith("/"):
+                cmds = {
+                    "sizes": self._on_cmd_sizes,
+                    "reload": self._on_cmd_reload_stocks,
+                }
+                cmd = first[1:]
+                if cmd in cmds:
+                    cmds[cmd](m, pp[1:])
+                else:
+                    self._tg.send_message(TgMsg(m.user_id, m.user_name, f"Unknown command: {cmd}"))
+            else:
+                self._tg.send_message(TgMsg(m.user_id, m.user_name, f"Dunno what to do with {m.text}"))
+        except Exception as e:
+            self._tg.send_message(TgMsg(m.user_id, None, str(e)))
+            raise
 
     def _load_data(self):
         logging.info("Updating stocks from Google Spreads: start")
-        cmp_to = ["Total", "Size"]
+        cmp_to = ["Всего", "Размеры"]
         hdr1, hdr2 = self.gs.cell(1, 1), self.gs.cell(1, 2)
         if [hdr1, hdr2] != cmp_to:
             logging.error(f"Wrong heading of Google Sheets table: {[hdr1, hdr2]} while {cmp_to} expected")
@@ -69,7 +87,7 @@ class ShoesShopApp:
                 return True
             except ValueError:
                 return False
-        row = 2
+        row = 3
         s = Stocks()
         while True:
             amt, size = self.gs.cell(row, 1), self.gs.cell(row, 2)
@@ -84,15 +102,30 @@ class ShoesShopApp:
                 s.sizes[size] = Stock(size, amt)
             row += 1
         s.mtime = time.time()
-        self._stocks = s  # hope GIL helps
-        logging.info("Updating stocks from Google Spreads: end")
+        self._stocks = s
+        count = len(s.sizes)
+        logging.info(f"Updating stocks from Google Spreads: loaded {count} rows")
+
+    def _on_cmd_sizes(self, m: TgMsg, args: list):
+        m = ["В наличиии размеры:"]
+        for s in sorted(s for s, st in self._stocks.sizes.items() if st.amount > 0):
+            m.append(f"* {s}")
+        txt = "\n".join(m)
+        self._tg.send_message(TgMsg(m.user_id, None, txt))
+
+    def _on_cmd_reload_stocks(self, m: TgMsg, args: list):
+        self._load_data()
 
 
 def init():
     load_dotenv()
     tg_token = os.getenv("BOOTSHOP_TG_TOKEN")
+    gs_cred_filename = os.getenv("BOOTSHOP_GS_CRED_FILENAME")
+    gs_key = os.getenv("BOOTSHOP_GS_KEY")
+    gs_sheet = os.getenv("BOOTSHOP_GS_SHEET")
+    gs_cfg = GoogleSheetsConfig(gs_cred_filename, gs_key, gs_sheet)
     telegram = TelegramReal(token=tg_token)
-    ShoesShopApp(tg=telegram)
+    ShoesShopApp(tg=telegram, gsheets_config=gs_cfg)
     return telegram
 
 

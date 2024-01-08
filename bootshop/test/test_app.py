@@ -12,7 +12,8 @@ class TestBootShopApp(unittest.TestCase):
 
     def _init_table(self):
         table = [
-            ["Total", "Size"],
+            ["Всего", "Размеры"],
+            ["", ""],
             [0, "34"],
             [5, "35"],
             [6, "36"],
