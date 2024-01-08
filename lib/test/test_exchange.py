@@ -214,12 +214,8 @@ class ExchangeTestsWithDatabaseFile(unittest.TestCase):
         self.matches = []
         self.exchange = Exchange(self.db, lambda m: self.matches.append(m))
         self.assertEqual(len(self.exchange._orders), 1)
-        print(self.exchange._orders)
         self.assertEqual(self.exchange._orders[1].amount_initial, 1400)
         self.assertEqual(self.exchange._orders[1].amount_left, 400)
         self.exchange.on_new_order(Order(User(3), OrderType.BUY, 98.0, 400.0, 100.0, lifetime_sec=48*60*60))
-        # print('-'*80)
-        # print(self.matches)
-        # print('-'*80)
         self.assertEqual(len(self.matches), 1)
         self.assertEqual(len(self.exchange._orders), 0)
