@@ -109,7 +109,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: 
       - build_and_push_to_docker_hub
-      - copying_json_configuration_file
     steps:
     - name: Checkout repo
       uses: actions/checkout@v3
