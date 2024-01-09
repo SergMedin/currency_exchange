@@ -27,3 +27,5 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ./useful-mile-334600-ce60f5954ea9.json:useful-mile-334600-ce60f5954ea9.json
