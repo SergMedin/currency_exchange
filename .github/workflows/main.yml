@@ -92,7 +92,7 @@ jobs:
     - uses: actions/download-artifact@v4
       with:
         name: my-artifact
-        path: distfiles
+        path: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
     - name: copy file to server
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -101,7 +101,7 @@ jobs:
         port: ${{ secrets.PORT }}
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
-        source: distfiles/*
+        source: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
         target: "exchange_app"
 
   deploy:
