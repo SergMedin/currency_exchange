@@ -92,7 +92,7 @@ jobs:
           rm .env
           touch .env
           echo EXCH_TG_TOKEN=${{ secrets.EXCH_TG_TOKEN }} >> .env
-          exho LOG_LVL=${{ secrets.LOG_LVL }} >> .env
+          echo LOG_LVL=${{ secrets.LOG_LVL }} >> .env
           echo CONSOLE_LOG_LVL=${{ secrets.CONSOLE_LOG_LVL }} >> .env
           echo EXCH_DB_CONN_STRING={{ secrets.EXCH_DB_CONN_STRING }} >> .env
           echo POSTGRES_USER=${{ secrets.POSTGRES_USER }} >> .env
