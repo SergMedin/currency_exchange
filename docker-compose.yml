@@ -20,10 +20,12 @@ services:
       retries: 5
 
   backend:
-    build: .
+    image: black3knight/exchange_app
     container_name: exchange_app
     restart: always
     env_file: .env
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ./useful-mile-334600-ce60f5954ea9.json:/app/useful-mile-334600-ce60f5954ea9.json
