@@ -1,0 +1,31 @@
+version: '3'
+
+volumes:
+  pg_data:
+
+services:
+  db: 
+    image: postgres:13
+    container_name: exchange_db_dev
+    restart: always
+    env_file: .env
+    ports:
+      - "5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    image: black3knight/exchange_app_dev
+    container_name: exchange_app_dev
+    restart: always
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./useful-mile-334600-ce60f5954ea9.json:/app/useful-mile-334600-ce60f5954ea9.json
