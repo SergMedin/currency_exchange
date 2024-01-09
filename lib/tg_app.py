@@ -1,5 +1,6 @@
 from decimal import Decimal, InvalidOperation
 import datetime
+import os
 
 from .db import Db
 from .tg import Tg, TgMsg
@@ -89,7 +90,8 @@ class TgApp:
         self._ex = Exchange(self._db, self._on_match, zmq_orders_log_endpoint)
         if zmq_orders_log_endpoint:
             assert log_spreadsheet_key is not None
-            self._loger = GSheetsLoger(zmq_orders_log_endpoint, log_spreadsheet_key)
+            worksheet_title = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
+            self._loger = GSheetsLoger(zmq_orders_log_endpoint, log_spreadsheet_key, worksheet_title)
             self._loger.start()
         self._validator = Validator()
 
