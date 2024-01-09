@@ -117,6 +117,7 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         script: |
+          cd exchange_app
           docker compose -f docker-compose.yml up -d
 
   send_message:
