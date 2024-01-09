@@ -61,48 +61,48 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/exchange_app:latest
 
-  copying_json_configuration_file:
-    name: Copying json configuration files
-    runs-on: ubuntu-latest
-    needs:
-      - build_and_push_to_docker_hub
-    steps:
-    - name: checkout the repo
-      uses: actions/checkout@v4
-    - name: creating .json configuration file
-      uses: jsdaniell/create-json@1.1.2
-      with:
-        name: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
-        json: ${{ secrets.GOOGLE_ACC_FILE_CONTENT }}
-    - uses: actions/upload-artifact@v4
-      with:
-        name: my-artifact
-        path: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
-    - name: rm old json file
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.HOST }}
-        port: ${{ secrets.PORT }}
-        username: ${{ secrets.USER }}
-        key: ${{ secrets.SSH_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
-        script: |
-          cd exchange_app
-          rm -f ${{ secrets.GOOGLE_ACC_KEY_FILE }}    
-    - uses: actions/download-artifact@v4
-      with:
-        name: my-artifact
-        path: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
-    - name: copy file to server
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USER }}
-        port: ${{ secrets.PORT }}
-        key: ${{ secrets.SSH_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
-        source: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
-        target: "exchange_app"
+  # copying_json_configuration_file:
+  #   name: Copying json configuration files
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - build_and_push_to_docker_hub
+  #   steps:
+  #   - name: checkout the repo
+  #     uses: actions/checkout@v4
+  #   - name: creating .json configuration file
+  #     uses: jsdaniell/create-json@1.1.2
+  #     with:
+  #       name: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
+  #       json: ${{ secrets.GOOGLE_ACC_FILE_CONTENT }}
+  #   # - uses: actions/upload-artifact@v4
+  #   #   with:
+  #   #     name: my-artifact
+  #   #     path: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
+  #   - name: rm old json file
+  #     uses: appleboy/ssh-action@master
+  #     with:
+  #       host: ${{ secrets.HOST }}
+  #       port: ${{ secrets.PORT }}
+  #       username: ${{ secrets.USER }}
+  #       key: ${{ secrets.SSH_KEY }}
+  #       passphrase: ${{ secrets.SSH_PASSPHRASE }}
+  #       script: |
+  #         cd exchange_app
+  #         rm -f ${{ secrets.GOOGLE_ACC_KEY_FILE }}    
+  #   # - uses: actions/download-artifact@v4
+  #   #   with:
+  #   #     name: my-artifact
+  #   #     path: distfiles
+  #   - name: copy file to server
+  #     uses: appleboy/scp-action@v0.1.7
+  #     with:
+  #       host: ${{ secrets.HOST }}
+  #       username: ${{ secrets.USER }}
+  #       port: ${{ secrets.PORT }}
+  #       key: ${{ secrets.SSH_KEY }}
+  #       passphrase: ${{ secrets.SSH_PASSPHRASE }}
+  #       source: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
+  #       target: "exchange_app"
 
   deploy:
     name: Deployment
@@ -146,27 +146,34 @@ jobs:
           echo ZMQ_ORDERS_LOG_ENDPOINT=${{ secrets.ZMQ_ORDERS_LOG_ENDPOINT }} >> .env
           echo SILENCE_WARNINGS_ENV_KEY=${{ secrets.SILENCE_WARNINGS_ENV_KEY }} >> .env
           echo GOOGLE_SPREADSHEET_SHEET_TITLE=${{ secrets.GOOGLE_SPREADSHEET_SHEET_TITLE }} >> .env
-          # rm -f ${{ secrets.GOOGLE_ACC_KEY_FILE }}
+          rm -f ${{ secrets.GOOGLE_ACC_KEY_FILE }}
+          touch ${{ secrets.GOOGLE_ACC_KEY_FILE }}
+          echo '${{ secrets.GOOGLE_ACC_FILE_CONTENT }}' >> ${{ secrets.GOOGLE_ACC_KEY_FILE }}
+          docker compose -f docker-compose.yml pull
+          docker compose -f docker-compose.yml down
+          docker compose -f docker-compose.yml up -d
+          docker system prune -af
     # - name: creating .json configuration file
     #   uses: jsdaniell/create-json@1.1.2
     #   with:
     #     name: ${{ secrets.GOOGLE_ACC_KEY_FILE }}
     #     json: ${{ secrets.GOOGLE_ACC_FILE_CONTENT }}
     #     dir: 'exchange_app/'
-    - name: Running deploy
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.HOST }}
-        port: ${{ secrets.PORT }}
-        username: ${{ secrets.USER }}
-        key: ${{ secrets.SSH_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
-        script: |
-          cd exchange_app
-          docker compose -f docker-compose.yml pull
-          docker compose -f docker-compose.yml down
-          docker compose -f docker-compose.yml up -d
-          docker system prune -af
+
+    # - name: Running deploy
+    #   uses: appleboy/ssh-action@master
+    #   with:
+    #     host: ${{ secrets.HOST }}
+    #     port: ${{ secrets.PORT }}
+    #     username: ${{ secrets.USER }}
+    #     key: ${{ secrets.SSH_KEY }}
+    #     passphrase: ${{ secrets.SSH_PASSPHRASE }}
+    #     script: |
+    #       cd exchange_app
+    #       docker compose -f docker-compose.yml pull
+    #       docker compose -f docker-compose.yml down
+    #       docker compose -f docker-compose.yml up -d
+    #       docker system prune -af
 
   send_message:
     name: Send message to Telegram Bot about succesful deploy
