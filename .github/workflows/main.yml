@@ -101,8 +101,7 @@ jobs:
           echo GOOGLE_ACC_KEY_FILE=${{ secrets.GOOGLE_ACC_KEY_FILE }} >> .env
           echo ZMQ_ORDERS_LOG_ENDPOINT=${{ secrets.ZMQ_ORDERS_LOG_ENDPOINT }} >> .env
           echo SILENCE_WARNINGS_ENV_KEY=${{ secrets.SILENCE_WARNINGS_ENV_KEY }} >> .env
-          # echo GOOGLE_SPREADSHEET_SHEET_TITLE=${{ secrets.GOOGLE_SPREADSHEET_SHEET_TITLE }} >> .env
-          echo GOOGLE_SPREADSHEET_SHEET_TITLE=OrdersLog >> .env
+          echo GOOGLE_SPREADSHEET_SHEET_TITLE=${{ secrets.GOOGLE_SPREADSHEET_SHEET_TITLE }} >> .env
           rm -f ${{ secrets.GOOGLE_ACC_KEY_FILE }}
           touch ${{ secrets.GOOGLE_ACC_KEY_FILE }}
           echo '${{ secrets.GOOGLE_ACC_FILE_CONTENT }}' >> ${{ secrets.GOOGLE_ACC_KEY_FILE }}
@@ -119,6 +118,6 @@ jobs:
     - name: Send message
       uses: appleboy/telegram-action@master
       with:
-        to: ${{ secrets.TELEGRAM_TO }}
-        token: ${{ secrets.ADMIN_TELEGRAM_TOKEN }}
+        to: ${{ secrets.STATUS_TG_SEND_TO }}
+        token: ${{ secrets.STATUS_TG_BOT_TOKEN }}
         message: ExchangeApp deploy (main branch) was succesful!
