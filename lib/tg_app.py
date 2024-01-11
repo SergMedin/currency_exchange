@@ -3,7 +3,7 @@ import datetime
 import os
 
 from .db import Db
-from .tg import Tg, TgMsg
+from .tg import Tg, TgIncomingMsg, TgOutgoingMsg
 from .exchange import Exchange
 from .gsheets_loger import GSheetsLoger
 from .data import Match, Order, User, OrderType
@@ -99,9 +99,9 @@ class TgApp:
         self._loger.stop()
 
     def _send_message(self, user_id, user_name, message, parse_mode=None):
-        self._tg.send_message(TgMsg(user_id, user_name, message), parse_mode=parse_mode)
+        self._tg.send_message(TgOutgoingMsg(user_id, user_name, message), parse_mode=parse_mode)
 
-    def _on_incoming_tg_message(self, m: TgMsg):
+    def _on_incoming_tg_message(self, m: TgIncomingMsg):
         try:
             if m.user_id < 0:
                 raise ValueError("We don't work with groups yet")
@@ -132,12 +132,12 @@ class TgApp:
         except ValueError as e:
             self._send_message(m.user_id, m.user_name, f"Error: {str(e)}")
 
-    def _handle_stat_command(self, m: TgMsg):
+    def _handle_stat_command(self, m: TgIncomingMsg):
         self._ex._check_order_lifetime()
         text = self._ex.get_stats()['text']
         self._send_message(m.user_id, m.user_name, text)
 
-    def _handle_add_command(self, m: TgMsg, params: list):
+    def _handle_add_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_add_command_params(params)
         order_type = OrderType[params[0].upper()]
         amount = Decimal(params[1])
@@ -156,7 +156,7 @@ class TgApp:
         self._send_message(m.user_id, m.user_name, "We get your order")
         self._ex.on_new_order(o)
 
-    def _handle_list_command(self, m: TgMsg):
+    def _handle_list_command(self, m: TgIncomingMsg):
         orders = self._ex.list_orders_for_user(User(m.user_id, m.user_name))
         if not orders:
             self._send_message(m.user_id, m.user_name, "You don't have any active orders")
@@ -171,7 +171,7 @@ class TgApp:
             ) + "\n\nto remove an order, use /remove <id>"
             self._send_message(m.user_id, m.user_name, text)
 
-    def _handle_remove_command(self, m: TgMsg, params: list):
+    def _handle_remove_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_remove_command_params(params, self._ex, m.user_id)
         remove_order_id = int(params[0])
         self._ex.remove_order(remove_order_id)
@@ -194,5 +194,5 @@ class TgApp:
             f"You should sell {m.amount} RUB to @{buyer_name} for {m.price} per unit (you should send"
             f" {m.amount:.2f} RUB, you will get {m.price * m.amount:.2f} AMD)"
         )
-        self._tg.send_message(TgMsg(buyer_id, buyer_name, message_buyer))
-        self._tg.send_message(TgMsg(seller_id, seller_name, message_seller))
+        self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
+        self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))

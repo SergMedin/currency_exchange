@@ -60,13 +60,6 @@ class Match:
     amount: Decimal
 
 
-@dataclasses.dataclass
-class TgMsg:
-    user_id: int
-    user_name: str
-    text: str
-
-
 class OperationType(enum.StrEnum):
     NEW_ORDER = "new_order"
     UPDATE = "update"
