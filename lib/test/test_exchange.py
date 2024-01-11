@@ -303,8 +303,7 @@ class T(unittest.TestCase):
             "total_amount_sellers": Decimal("1000"),
         }
         result = self.exchange.get_stats()["data"]
-        # self.assertEqual(result, expected_result)
-        self.assertEqual(result, "FAILED TEST!")
+        self.assertEqual(result, expected_result)
 
     def test_loger_simple(self):
         self.exchange.on_new_order(
