@@ -1,7 +1,7 @@
 import asyncio
 from lib.tg import Tg, TgIncomingMsg, TgOutgoingMsg
 
-from telegram import Update, InlineKeyboardButton
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 
@@ -29,6 +29,16 @@ class TgReal2(Tg):
             await update.message.reply_text(f"Error: {str(e)}")
 
     def send_message(self, m: TgOutgoingMsg, parse_mode=None):
+        keyboard = [
+            [
+                InlineKeyboardButton("Option 1", callback_data="1"),
+                InlineKeyboardButton("Option 2", callback_data="2"),
+            ],
+            [InlineKeyboardButton("Option 3", callback_data="3")],
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
         asyncio.create_task(
-            self.application.bot.send_message(m.user_id, m.text, parse_mode=parse_mode)
+            self.application.bot.send_message(m.user_id, m.text, parse_mode=parse_mode, reply_markup=reply_markup)
         )
