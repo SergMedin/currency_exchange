@@ -80,7 +80,7 @@ class Validator:
             raise ValueError(f"Invalid order id: {remove_order_id}")
 
 
-class TgApp:
+class Application:
     # TODO:
     # - add lifetime to orders
     def __init__(self, db: Db, tg: Tg, zmq_orders_log_endpoint=None, log_spreadsheet_key=None):
