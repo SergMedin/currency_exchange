@@ -6,7 +6,7 @@ from telegram import (
     Update,
 )
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
-from telegram import InlineKeyboardButton
+from telegram import InlineKeyboardButton, ReplyKeyboardMarkup
 
 OnMessageType = Callable[[TgMsg], None]
 
@@ -35,9 +35,7 @@ class TelegramMock(Tg):
             raise ValueError()
         self.outgoing.append(m)
 
-    def emulate_incoming_message(
-        self, from_user_id: int, from_user_name: str, text: str
-    ):
+    def emulate_incoming_message(self, from_user_id: int, from_user_name: str, text: str):
         m = TgMsg(from_user_id, from_user_name, text)
         self.incoming.append(m)
         if self.on_message:
@@ -47,16 +45,12 @@ class TelegramMock(Tg):
 class TelegramReal(Tg):
     def __init__(self, token: str):
         self.application = Application.builder().token(token).build()
-        self.application.add_handler(
-            MessageHandler(filters.TEXT, self._default_handler)
-        )
+        self.application.add_handler(MessageHandler(filters.TEXT, self._default_handler))
 
     def run_forever(self):
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-    async def _default_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    async def _default_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = TgMsg(
             update.effective_chat.id,
             update.effective_chat.username,
@@ -67,8 +61,10 @@ class TelegramReal(Tg):
         except ValueError as e:
             await update.message.reply_text(f"Error: {str(e)}")
 
-    def send_message(self, m: TgMsg, parse_mode=None):
+    def send_message(self, m: TgMsg, parse_mode=None, reply_markup=None):
+        if reply_markup:
+            reply_markup = ReplyKeyboardMarkup(reply_markup, resize_keyboard=True, one_time_keyboard=True)
         # print("TG OUTGOING:", m)
         asyncio.create_task(
-            self.application.bot.send_message(m.user_id, m.text, parse_mode=parse_mode)
+            self.application.bot.send_message(m.user_id, m.text, parse_mode=parse_mode, reply_markup=reply_markup)
         )
