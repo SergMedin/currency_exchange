@@ -63,10 +63,6 @@ class Validator:
             raise ValueError(f"Invalid value for Decimal: {price}")
 
     def validate_min_op_threshold(self, min_op_threshold: str, amount: str):
-        if not min_op_threshold.isnumeric():
-            raise ValueError(
-                f"Minimum operational threshold cannot be negative: {min_op_threshold}"
-            )  # FIXME: this is not correct
         try:
             min_op_threshold = Decimal(min_op_threshold)
             amount = Decimal(amount)
