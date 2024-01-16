@@ -59,6 +59,8 @@ class Validator:
             price = Decimal(price)
             if price != price.quantize(Decimal("0.00")):
                 raise ValueError(f"Price has more than two digits after the decimal point: {price}")
+            elif price <= 0:
+                raise ValueError("Price cannot be negative or zero")
         except InvalidOperation:
             raise ValueError(f"Invalid value for Decimal: {price}")
 
@@ -76,8 +78,10 @@ class Validator:
     def validate_lifetime(self, lifetime: str):
         if not lifetime.isnumeric():
             raise ValueError(f"Invalid lifetime: {lifetime}")
-        if int(lifetime) < 0 or int(lifetime) > 48:
-            raise ValueError(f"Invalid lifetime: {lifetime}")
+        if int(lifetime) < 0:
+            raise ValueError(f"Lifetime cannot be negative")
+        if int(lifetime) > 48:
+            raise ValueError(f"Lifetime cannot be greater than 48 hours")
 
     def validate_remove_command_params(self, params, exchange, user_id):
         if len(params) == 1:
@@ -122,12 +126,12 @@ class TgApp:
 
             if m.text == "Создать заявку":
                 self._sessions[m.user_id] = {
-                    "state_machine": OrderCreation(m.user_id),
+                    "order_creation_state_machine": OrderCreation(m.user_id),
                     "order": Order(User(m.user_id, m.user_name), None, None, None, None, None),
                 }
 
             if self._sessions.get(m.user_id):
-                if self._sessions[m.user_id].get("state_machine"):
+                if self._sessions[m.user_id].get("order_creation_state_machine"):
                     self._handle_order_creation_sm(m)
                     return
 
@@ -186,11 +190,11 @@ class TgApp:
         self._ex.on_new_order(o)
 
     def _handle_order_creation_sm(self, m: TgMsg):
-        state = self._sessions[m.user_id]["state_machine"].state
+        state = self._sessions[m.user_id]["order_creation_state_machine"].state
         if state == "start":
             text = "Выберите тип заявки"
             reply_markup = [["Купить", "Продать"]]
-            self._sessions[m.user_id]["state_machine"].new_order()
+            self._sessions[m.user_id]["order_creation_state_machine"].new_order()
         elif state == "type":
             if m.text == "Купить":
                 self._sessions[m.user_id]["order"].type = OrderType.BUY
@@ -198,43 +202,43 @@ class TgApp:
                 self._sessions[m.user_id]["order"].type = OrderType.SELL
             else:
                 raise ValueError(f"Invalid order type: {m.text}")
-            self._sessions[m.user_id]["state_machine"].set_type()
+            self._sessions[m.user_id]["order_creation_state_machine"].set_type()
             text = "Выберите исходную валюту"
             reply_markup = [["RUB"]]
         elif state == "currency_from":
             self._validator.validate_currency_from(m.text)
             self._sessions[m.user_id]["order"].currency_from = m.text
-            self._sessions[m.user_id]["state_machine"].set_currency_from()
+            self._sessions[m.user_id]["order_creation_state_machine"].set_currency_from()
             text = "Выберите целевую валюту"
             reply_markup = [["AMD"]]
         elif state == "currency_to":
             self._validator.validate_currency_to(m.text)
             self._sessions[m.user_id]["order"].currency_to = m.text
-            self._sessions[m.user_id]["state_machine"].set_currency_to()
+            self._sessions[m.user_id]["order_creation_state_machine"].set_currency_to()
             text = "Введите сумму для обмена"
             reply_markup = None
         elif state == "amount":
             self._validator.validate_amount(m.text)
             self._sessions[m.user_id]["order"].amount_initial = Decimal(m.text)
-            self._sessions[m.user_id]["state_machine"].set_amount()
-            text = "Введите желаемую цену за единицу валюты"
+            self._sessions[m.user_id]["order_creation_state_machine"].set_amount()
+            text = "Введите желаемую цену за единицу валюты (курс обмена)"
             reply_markup = None
         elif state == "price":
             self._validator.validate_price(m.text)
             self._sessions[m.user_id]["order"].price = Decimal(m.text)
-            self._sessions[m.user_id]["state_machine"].set_price()
+            self._sessions[m.user_id]["order_creation_state_machine"].set_price()
             text = "Введите минимальный порог операции"
             reply_markup = None
         elif state == "min_op_threshold":
             self._validator.validate_min_op_threshold(m.text, self._sessions[m.user_id]["order"].amount_initial)
             self._sessions[m.user_id]["order"].min_op_threshold = Decimal(m.text)
-            self._sessions[m.user_id]["state_machine"].set_min_op_threshold()
+            self._sessions[m.user_id]["order_creation_state_machine"].set_min_op_threshold()
             text = "Введите время жизни заявки в часах (не более 48)"
             reply_markup = None
         elif state == "lifetime":
             self._validator.validate_lifetime(m.text)
             self._sessions[m.user_id]["order"].lifetime_sec = int(m.text) * 3600
-            self._sessions[m.user_id]["state_machine"].set_lifetime()
+            self._sessions[m.user_id]["order_creation_state_machine"].set_lifetime()
             text = "Подтвердите создание заявки"
             reply_markup = [["Подтвердить"], ["Отменить"]]
         elif state == "confirm":
@@ -247,7 +251,7 @@ class TgApp:
             else:
                 raise ValueError(f"Invalid command: {m.text}")
             reply_markup = self.MAIN_MENU_BUTTONS
-            self._sessions[m.user_id]["state_machine"] = None
+            self._sessions[m.user_id]["order_creation_state_machine"] = None
             self._sessions[m.user_id]["order"] = None
 
         self._send_message(m.user_id, m.user_name, text, reply_markup=reply_markup)
