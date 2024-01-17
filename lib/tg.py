@@ -44,7 +44,7 @@ class TelegramMock(Tg):
 
 class TelegramReal(Tg):
     def __init__(self, token: str):
-        self.application = Application.builder().token(token).build()
+        self.application: Application = Application.builder().token(token).build()
         self.application.add_handler(MessageHandler(filters.TEXT, self._default_handler))
 
     def run_forever(self):

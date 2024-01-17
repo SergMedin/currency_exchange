@@ -97,7 +97,7 @@ class Validator:
             raise ValueError(f"Invalid order id: {remove_order_id}")
 
 
-class TgApp:
+class Application:
     MAIN_MENU_BUTTONS = [["Создать заявку", "Мои заявки"], ["Статистика", "Помощь"]]  # TODO: 'История заявок'
 
     def __init__(self, db: Db, tg: Tg, zmq_orders_log_endpoint=None, log_spreadsheet_key=None):
