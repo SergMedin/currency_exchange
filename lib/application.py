@@ -2,6 +2,8 @@ from decimal import Decimal, InvalidOperation
 import datetime
 import os
 
+from tinydb import TinyDB, Query
+
 from .db import Db
 from .tg import Tg, TgMsg
 from .exchange import Exchange
@@ -106,6 +108,7 @@ class Application:
         self._tg.on_message = self._on_incoming_tg_message
         self._ex = Exchange(self._db, self._on_match, zmq_orders_log_endpoint)
         self._sessions = {}
+        self._app_db = TinyDB("app_db.json")
         if zmq_orders_log_endpoint:
             assert log_spreadsheet_key is not None
             worksheet_title = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
@@ -119,19 +122,34 @@ class Application:
     def _send_message(self, user_id, user_name, message, parse_mode=None, reply_markup=None):
         self._tg.send_message(TgMsg(user_id, user_name, message), parse_mode=parse_mode, reply_markup=reply_markup)
 
+    def _check_unfinished_session(self, m: TgMsg):
+        user_query = self._app_db.search(Query().user_id == m.user_id)
+        if user_query:
+            if user_query[0].get("order_creation_state_machine"):
+                return user_query[0]
+
     def _on_incoming_tg_message(self, m: TgMsg):
         try:
             if m.user_id < 0:
                 raise ValueError("We don't work with groups yet")
 
             if m.text == "Создать заявку":
-                self._sessions[m.user_id] = {
-                    "order_creation_state_machine": OrderCreation(m.user_id),
-                    "order": Order(User(m.user_id, m.user_name), None, None, None, None, None),
-                }
+                self._prepare_order_creation(m)
 
             if self._sessions.get(m.user_id):
                 if self._sessions[m.user_id].get("order_creation_state_machine"):
+                    self._handle_order_creation_sm(m)
+                    return
+                else:
+                    session = self._check_unfinished_session(m)
+                    if session:
+                        self._prepare_order_creation(m, session)
+                        self._handle_order_creation_sm(m)
+                        return
+            else:
+                session = self._check_unfinished_session(m)
+                if session:
+                    self._prepare_order_creation(m, session)
                     self._handle_order_creation_sm(m)
                     return
 
@@ -189,56 +207,131 @@ class Application:
         self._send_message(m.user_id, m.user_name, "We get your order", reply_markup=self.MAIN_MENU_BUTTONS)
         self._ex.on_new_order(o)
 
+    def _prepare_order_creation(self, m: TgMsg, session=None):
+        self._sessions[m.user_id] = {
+            "order_creation_state_machine": OrderCreation(m.user_id),
+            "order": Order(User(m.user_id, m.user_name), None, None, None, None, None),
+        }
+        if session:
+            self._sessions[m.user_id]["order_creation_state_machine"].state = session["order_creation_state_machine"]
+            for key, value in session["order"].items():
+                if key == "user_id" or key == "user_name":
+                    continue
+                elif key == "type":
+                    self._sessions[m.user_id]["order"].type = OrderType[value]
+                elif key in ["amount_initial", "amount_left", "price", "min_op_threshold"]:
+                    self._sessions[m.user_id]["order"].__setattr__(key, Decimal(value))
+                else:
+                    self._sessions[m.user_id]["order"].__setattr__(key, value)
+        else:
+            self._app_db.insert({"user_id": m.user_id, "user_name": m.user_name})
+            self._app_db.update({"order_creation_state_machine": "start"}, Query().user_id == m.user_id)
+            self._app_db.update({"order": "start"}, Query().user_id == m.user_id)
+
     def _handle_order_creation_sm(self, m: TgMsg):
         state = self._sessions[m.user_id]["order_creation_state_machine"].state
         if state == "start":
             text = "Выберите тип заявки"
             reply_markup = [["Купить", "Продать"]]
             self._sessions[m.user_id]["order_creation_state_machine"].new_order()
+            self._app_db.update(
+                {"order": {"user_id": m.user_id, "user_name": m.user_name}},
+                Query().user_id == m.user_id,
+            )
+            self._app_db.update({"order_creation_state_machine": "type"}, Query().user_id == m.user_id)
         elif state == "type":
             if m.text == "Купить":
                 self._sessions[m.user_id]["order"].type = OrderType.BUY
+                self._app_db.update(
+                    {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "type": "BUY"}},
+                    Query().user_id == m.user_id,
+                )
             elif m.text == "Продать":
                 self._sessions[m.user_id]["order"].type = OrderType.SELL
+                self._app_db.update(
+                    {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "type": "SELL"}},
+                    Query().user_id == m.user_id,
+                )
             else:
                 raise ValueError(f"Invalid order type: {m.text}")
             self._sessions[m.user_id]["order_creation_state_machine"].set_type()
+            self._app_db.update({"order_creation_state_machine": "currency_from"}, Query().user_id == m.user_id)
             text = "Выберите исходную валюту"
             reply_markup = [["RUB"]]
         elif state == "currency_from":
             self._validator.validate_currency_from(m.text)
             self._sessions[m.user_id]["order"].currency_from = m.text
             self._sessions[m.user_id]["order_creation_state_machine"].set_currency_from()
+            self._app_db.update(
+                {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "currency_from": m.text}},
+                Query().user_id == m.user_id,
+            )
+            self._app_db.update({"order_creation_state_machine": "currency_to"}, Query().user_id == m.user_id)
             text = "Выберите целевую валюту"
             reply_markup = [["AMD"]]
         elif state == "currency_to":
             self._validator.validate_currency_to(m.text)
             self._sessions[m.user_id]["order"].currency_to = m.text
             self._sessions[m.user_id]["order_creation_state_machine"].set_currency_to()
+            self._app_db.update(
+                {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "currency_to": m.text}},
+                Query().user_id == m.user_id,
+            )
+            self._app_db.update({"order_creation_state_machine": "amount"}, Query().user_id == m.user_id)
             text = "Введите сумму для обмена"
             reply_markup = None
         elif state == "amount":
             self._validator.validate_amount(m.text)
             self._sessions[m.user_id]["order"].amount_initial = Decimal(m.text)
             self._sessions[m.user_id]["order_creation_state_machine"].set_amount()
+            self._app_db.update(
+                {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "amount_initial": m.text}},
+                Query().user_id == m.user_id,
+            )
+            self._app_db.update({"order_creation_state_machine": "price"}, Query().user_id == m.user_id)
             text = "Введите желаемую цену за единицу валюты (курс обмена)"
             reply_markup = None
         elif state == "price":
             self._validator.validate_price(m.text)
             self._sessions[m.user_id]["order"].price = Decimal(m.text)
             self._sessions[m.user_id]["order_creation_state_machine"].set_price()
+            self._app_db.update(
+                {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "price": m.text}},
+                Query().user_id == m.user_id,
+            )
+            self._app_db.update({"order_creation_state_machine": "min_op_threshold"}, Query().user_id == m.user_id)
             text = "Введите минимальный порог операции"
             reply_markup = None
         elif state == "min_op_threshold":
             self._validator.validate_min_op_threshold(m.text, self._sessions[m.user_id]["order"].amount_initial)
             self._sessions[m.user_id]["order"].min_op_threshold = Decimal(m.text)
             self._sessions[m.user_id]["order_creation_state_machine"].set_min_op_threshold()
+            self._app_db.update(
+                {
+                    "order": {
+                        **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                        "min_op_threshold": m.text,
+                    }
+                },
+                Query().user_id == m.user_id,
+            )
+            self._app_db.update({"order_creation_state_machine": "lifetime"}, Query().user_id == m.user_id)
             text = "Введите время жизни заявки в часах (не более 48)"
             reply_markup = None
         elif state == "lifetime":
             self._validator.validate_lifetime(m.text)
             self._sessions[m.user_id]["order"].lifetime_sec = int(m.text) * 3600
             self._sessions[m.user_id]["order_creation_state_machine"].set_lifetime()
+            self._app_db.update(
+                {
+                    "order": {
+                        **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                        "lifetime_sec": int(m.text) * 3600,
+                    }
+                },
+                Query().user_id == m.user_id,
+            )
+            self._app_db.update({"order_creation_state_machine": "confirm"}, Query().user_id == m.user_id)
             text = "Подтвердите создание заявки"
             reply_markup = [["Подтвердить"], ["Отменить"]]
         elif state == "confirm":
@@ -253,6 +346,8 @@ class Application:
             reply_markup = self.MAIN_MENU_BUTTONS
             self._sessions[m.user_id]["order_creation_state_machine"] = None
             self._sessions[m.user_id]["order"] = None
+            del self._sessions[m.user_id]
+            self._app_db.remove(Query().user_id == m.user_id)
 
         self._send_message(m.user_id, m.user_name, text, reply_markup=reply_markup)
 

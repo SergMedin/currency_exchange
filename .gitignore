@@ -156,3 +156,4 @@ cython_debug/
 
 *.db
 *.sqlite
+app_db.json
