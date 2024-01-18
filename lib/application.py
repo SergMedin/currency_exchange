@@ -108,7 +108,7 @@ class Application:
         self._tg.on_message = self._on_incoming_tg_message
         self._ex = Exchange(self._db, self._on_match, zmq_orders_log_endpoint)
         self._sessions = {}
-        self._app_db = TinyDB("app_db.json")
+        self._app_db = TinyDB("./tg_data/app_db.json")
         if zmq_orders_log_endpoint:
             assert log_spreadsheet_key is not None
             worksheet_title = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
