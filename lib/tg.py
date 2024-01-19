@@ -1,14 +1,27 @@
 from typing import Callable
-from .data import TgMsg
 import asyncio
-
-from telegram import (
-    Update,
-)
+import dataclasses
+from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 from telegram import InlineKeyboardButton, ReplyKeyboardMarkup
 
-OnMessageType = Callable[[TgMsg], None]
+
+
+@dataclasses.dataclass
+class TgIncomingMsg:
+    user_id: int
+    user_name: str
+    text: str
+
+
+@dataclasses.dataclass
+class TgOutgoingMsg:
+    user_id: int
+    user_name: str
+    text: str
+
+
+OnMessageType = Callable[[TgIncomingMsg], None]
 
 
 class Tg:
@@ -20,23 +33,24 @@ class Tg:
     def on_message(self, value: OnMessageType) -> None:
         self._on_message = value
 
-    def send_message(self, m: TgMsg):
+    def send_message(self, m: TgOutgoingMsg):
         raise NotImplementedError()
 
 
 class TelegramMock(Tg):
     def __init__(self):
         super().__init__()
-        self.outgoing: list[TgMsg] = []
-        self.incoming: list[TgMsg] = []
+        self.outgoing: list[TgOutgoingMsg] = []
+        self.incoming: list[TgIncomingMsg] = []
 
-    def send_message(self, m: TgMsg, parse_mode=None, reply_markup=None):
-        if not isinstance(m, TgMsg):
+
+    def send_message(self, m: TgOutgoingMsg, parse_mode=None, reply_markup=None):
+        if not isinstance(m, TgOutgoingMsg):
             raise ValueError()
         self.outgoing.append(m)
 
     def emulate_incoming_message(self, from_user_id: int, from_user_name: str, text: str):
-        m = TgMsg(from_user_id, from_user_name, text)
+        m = TgIncomingMsg(from_user_id, from_user_name, text)
         self.incoming.append(m)
         if self.on_message:
             self.on_message(m)
@@ -51,7 +65,7 @@ class TelegramReal(Tg):
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
 
     async def _default_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        message = TgMsg(
+        message = TgIncomingMsg(
             update.effective_chat.id,
             update.effective_chat.username,
             update.message.text,
@@ -61,7 +75,8 @@ class TelegramReal(Tg):
         except ValueError as e:
             await update.message.reply_text(f"Error: {str(e)}")
 
-    def send_message(self, m: TgMsg, parse_mode=None, reply_markup=None):
+
+    def send_message(self, m: TgOutgoingMsg, parse_mode=None, reply_markup=None):
         if reply_markup:
             reply_markup = ReplyKeyboardMarkup(reply_markup, resize_keyboard=True, one_time_keyboard=True)
         # print("TG OUTGOING:", m)

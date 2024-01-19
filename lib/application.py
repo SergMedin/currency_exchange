@@ -5,13 +5,13 @@ import os
 from tinydb import TinyDB, Query
 
 from .db import Db
-from .tg import Tg, TgMsg
+from .tg import Tg, TgIncomingMsg, TgOutgoingMsg
+
 from .exchange import Exchange
 from .gsheets_loger import GSheetsLoger
 from .data import Match, Order, User, OrderType
 from .logger import get_logger
 from .statemachines import OrderCreation
-
 
 logger = get_logger(__name__)
 
@@ -20,6 +20,7 @@ class Validator:
     def validate_add_command_params(self, params):
         if len(params) != 10:
             raise ValueError("Invalid number of arguments")
+
         self.validate_order_type(params[0])
         self.validate_amount(params[1])
         self.validate_currency_from(params[2])
@@ -101,6 +102,8 @@ class Validator:
 
 class Application:
     MAIN_MENU_BUTTONS = [["Создать заявку", "Мои заявки"], ["Статистика", "Помощь"]]  # TODO: 'История заявок'
+    # TODO:
+    # - add lifetime to orders
 
     def __init__(self, db: Db, tg: Tg, zmq_orders_log_endpoint=None, log_spreadsheet_key=None):
         self._db = db
@@ -109,6 +112,7 @@ class Application:
         self._ex = Exchange(self._db, self._on_match, zmq_orders_log_endpoint)
         self._sessions = {}
         self._app_db = TinyDB("./tg_data/app_db.json")
+
         if zmq_orders_log_endpoint:
             assert log_spreadsheet_key is not None
             worksheet_title = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
@@ -119,16 +123,17 @@ class Application:
     def shutdown(self):
         self._loger.stop()
 
-    def _send_message(self, user_id, user_name, message, parse_mode=None, reply_markup=None):
-        self._tg.send_message(TgMsg(user_id, user_name, message), parse_mode=parse_mode, reply_markup=reply_markup)
 
-    def _check_unfinished_session(self, m: TgMsg):
+    def _send_message(self, user_id, user_name, message, parse_mode=None, reply_markup=None):
+        self._tg.send_message(TgOutgoingMsg(user_id, user_name, message), parse_mode=parse_mode, reply_markup=reply_markup)
+
+    def _check_unfinished_session(self, m: TgIncomingMsg):
         user_query = self._app_db.search(Query().user_id == m.user_id)
         if user_query:
             if user_query[0].get("order_creation_state_machine"):
                 return user_query[0]
 
-    def _on_incoming_tg_message(self, m: TgMsg):
+    def _on_incoming_tg_message(self, m: TgIncomingMsg):
         try:
             if m.user_id < 0:
                 raise ValueError("We don't work with groups yet")
@@ -183,12 +188,12 @@ class Application:
         except ValueError as e:
             self._send_message(m.user_id, m.user_name, f"Error: {str(e)}")
 
-    def _handle_stat_command(self, m: TgMsg):
+    def _handle_stat_command(self, m: TgIncomingMsg):
         self._ex._check_order_lifetime()
         text = self._ex.get_stats()["text"]
         self._send_message(m.user_id, m.user_name, text, reply_markup=self.MAIN_MENU_BUTTONS)
 
-    def _handle_add_command(self, m: TgMsg, params: list):
+    def _handle_add_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_add_command_params(params)
         order_type = OrderType[params[0].upper()]
         amount = Decimal(params[1])
@@ -207,7 +212,7 @@ class Application:
         self._send_message(m.user_id, m.user_name, "We get your order", reply_markup=self.MAIN_MENU_BUTTONS)
         self._ex.on_new_order(o)
 
-    def _prepare_order_creation(self, m: TgMsg, session=None):
+    def _prepare_order_creation(self, m: TgIncomingMsg, session=None):
         self._sessions[m.user_id] = {
             "order_creation_state_machine": OrderCreation(m.user_id),
             "order": Order(User(m.user_id, m.user_name), None, None, None, None, None),
@@ -228,7 +233,7 @@ class Application:
             self._app_db.update({"order_creation_state_machine": "start"}, Query().user_id == m.user_id)
             self._app_db.update({"order": "start"}, Query().user_id == m.user_id)
 
-    def _handle_order_creation_sm(self, m: TgMsg):
+    def _handle_order_creation_sm(self, m: TgIncomingMsg):
         state = self._sessions[m.user_id]["order_creation_state_machine"].state
         if state == "start":
             text = "Выберите тип заявки"
@@ -351,7 +356,7 @@ class Application:
 
         self._send_message(m.user_id, m.user_name, text, reply_markup=reply_markup)
 
-    def _handle_list_command(self, m: TgMsg):
+    def _handle_list_command(self, m: TgIncomingMsg):
         orders = self._ex.list_orders_for_user(User(m.user_id, m.user_name))
         if not orders:
             self._send_message(
@@ -372,7 +377,7 @@ class Application:
             )
             self._send_message(m.user_id, m.user_name, text)
 
-    def _handle_remove_command(self, m: TgMsg, params: list):
+    def _handle_remove_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_remove_command_params(params, self._ex, m.user_id)
         remove_order_id = int(params[0])
         self._ex.remove_order(remove_order_id)
@@ -395,5 +400,5 @@ class Application:
             f"You should sell {m.amount} RUB to @{buyer_name} for {m.price} per unit (you should send"
             f" {m.amount:.2f} RUB, you will get {m.price * m.amount:.2f} AMD)"
         )
-        self._tg.send_message(TgMsg(buyer_id, buyer_name, message_buyer))
-        self._tg.send_message(TgMsg(seller_id, seller_name, message_seller))
+        self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
+        self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))

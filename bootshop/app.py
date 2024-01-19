@@ -6,7 +6,7 @@ import time
 import logging
 import deepdiff
 from typing import Dict
-from lib.tg import TelegramReal, Tg, TgMsg
+from lib.tg import TelegramReal, Tg, TgIncomingMsg, TgOutgoingMsg
 from lib.gspreads import GSpreadsTable, GSpreadsTableMock
 
 # Привет! Какой нужен каблук?
@@ -54,7 +54,7 @@ class ShoesShopApp:
         self._stocks = Stocks()
         self._load_data()
 
-    def _on_incoming_tg_message(self, m: TgMsg):
+    def _on_incoming_tg_message(self, m: TgIncomingMsg):
         logging.info(f"New tg msg: {m}")
         try:
             pp = m.text.split()
@@ -68,11 +68,11 @@ class ShoesShopApp:
                 if cmd in cmds:
                     cmds[cmd](m, pp[1:])
                 else:
-                    self._tg.send_message(TgMsg(m.user_id, m.user_name, f"Unknown command: {cmd}"))
+                    self._tg.send_message(TgOutgoingMsg(m.user_id, m.user_name, f"Unknown command: {cmd}"))
             else:
-                self._tg.send_message(TgMsg(m.user_id, m.user_name, f"Dunno what to do with {m.text}"))
+                self._tg.send_message(TgOutgoingMsg(m.user_id, m.user_name, f"Dunno what to do with {m.text}"))
         except Exception as e:
-            self._tg.send_message(TgMsg(m.user_id, None, str(e)))
+            self._tg.send_message(TgOutgoingMsg(m.user_id, None, str(e)))
             raise
 
     def _load_data(self):
@@ -114,21 +114,21 @@ class ShoesShopApp:
         if m.user_id not in self.ADM_USSERS:
             raise Exception("Access denied")
 
-    def _on_cmd_sizes(self, m: TgMsg, args: list):
+    def _on_cmd_sizes(self, m: TgIncomingMsg, args: list):
         lines = ["В наличиии размеры:"]
         for s in sorted(s for s, st in self._stocks.sizes.items() if st.amount > 0):
             lines.append(f"* {s}")
         txt = "\n".join(lines)
-        self._tg.send_message(TgMsg(m.user_id, None, txt))
+        self._tg.send_message(TgOutgoingMsg(m.user_id, None, txt))
 
-    def _on_cmd_reload_stocks(self, m: TgMsg, args: list):
+    def _on_cmd_reload_stocks(self, m: TgIncomingMsg, args: list):
         self._check_admin_access(m)
         before = self._stocks.sizes.copy()
         self._load_data()
         after = self._stocks.sizes.copy()
         d = deepdiff.DeepDiff(before, after)
         txt = f"The diff: {d}"
-        self._tg.send_message(TgMsg(m.user_id, None, txt))
+        self._tg.send_message(TgOutgoingMsg(m.user_id, None, txt))
 
 
 def init():
