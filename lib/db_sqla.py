@@ -93,6 +93,7 @@ class _DbOrder(_Base):
     amount_initial_cents: Mapped[int] = mapped_column(nullable=False)
     amount_left_cents: Mapped[int] = mapped_column(nullable=False)
     min_op_threshold_cents: Mapped[int] = mapped_column(nullable=False)
+    relative_rate: Mapped[Decimal] = mapped_column(nullable=False)
 
 
 class _DbLastMatchPrice(_Base):
@@ -182,6 +183,12 @@ _ORDERS_TABLE = _Table(
             "min_op_threshold_cents",
             lambda x: int(x * 100),
             lambda x: x / Decimal(100.0),
+        ),
+        _Field(
+            "relative_rate",
+            "relative_rate",
+            lambda x: int(x * 10000),
+            lambda x: x / Decimal(10000.0),
         ),
     ],
 )

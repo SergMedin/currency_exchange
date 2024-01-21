@@ -123,9 +123,10 @@ class Application:
     def shutdown(self):
         self._loger.stop()
 
-
     def _send_message(self, user_id, user_name, message, parse_mode=None, reply_markup=None):
-        self._tg.send_message(TgOutgoingMsg(user_id, user_name, message), parse_mode=parse_mode, reply_markup=reply_markup)
+        self._tg.send_message(
+            TgOutgoingMsg(user_id, user_name, message), parse_mode=parse_mode, reply_markup=reply_markup
+        )
 
     def _check_unfinished_session(self, m: TgIncomingMsg):
         user_query = self._app_db.search(Query().user_id == m.user_id)
@@ -224,7 +225,7 @@ class Application:
                     continue
                 elif key == "type":
                     self._sessions[m.user_id]["order"].type = OrderType[value]
-                elif key in ["amount_initial", "amount_left", "price", "min_op_threshold"]:
+                elif key in ["amount_initial", "amount_left", "price", "min_op_threshold", "relative_rate"]:
                     self._sessions[m.user_id]["order"].__setattr__(key, Decimal(value))
                 else:
                     self._sessions[m.user_id]["order"].__setattr__(key, value)
@@ -237,7 +238,7 @@ class Application:
         state = self._sessions[m.user_id]["order_creation_state_machine"].state
         if state == "start":
             text = "Выберите тип заявки"
-            reply_markup = [["Купить", "Продать"]]
+            reply_markup = [["Купить рубли", "Продать рубли"]]
             self._sessions[m.user_id]["order_creation_state_machine"].new_order()
             self._app_db.update(
                 {"order": {"user_id": m.user_id, "user_name": m.user_name}},
@@ -259,11 +260,15 @@ class Application:
                 )
             else:
                 raise ValueError(f"Invalid order type: {m.text}")
-            self._sessions[m.user_id]["order_creation_state_machine"].set_type()
-            self._app_db.update({"order_creation_state_machine": "currency_from"}, Query().user_id == m.user_id)
-            text = "Выберите исходную валюту"
-            reply_markup = [["RUB"]]
-        elif state == "currency_from":
+            # self._sessions[m.user_id]["order_creation_state_machine"].set_type()
+            self._sessions[m.user_id]["order_creation_state_machine"].set_type_rubamd()
+            # self._app_db.update({"order_creation_state_machine": "currency_from"}, Query().user_id == m.user_id)
+            self._app_db.update({"order_creation_state_machine": "amount"}, Query().user_id == m.user_id)
+            # text = "Выберите исходную валюту"
+            # reply_markup = [["RUB"]]
+            text = "Введите сумму для обмена (RUB)"
+            reply_markup = None
+        elif state == "currency_from":  # Currently not used
             self._validator.validate_currency_from(m.text)
             self._sessions[m.user_id]["order"].currency_from = m.text
             self._sessions[m.user_id]["order_creation_state_machine"].set_currency_from()
@@ -274,7 +279,7 @@ class Application:
             self._app_db.update({"order_creation_state_machine": "currency_to"}, Query().user_id == m.user_id)
             text = "Выберите целевую валюту"
             reply_markup = [["AMD"]]
-        elif state == "currency_to":
+        elif state == "currency_to":  # Currently not used
             self._validator.validate_currency_to(m.text)
             self._sessions[m.user_id]["order"].currency_to = m.text
             self._sessions[m.user_id]["order_creation_state_machine"].set_currency_to()
@@ -293,19 +298,88 @@ class Application:
                 {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "amount_initial": m.text}},
                 Query().user_id == m.user_id,
             )
+            self._app_db.update({"order_creation_state_machine": "type_price"}, Query().user_id == m.user_id)
+            text = "Выберите тип курса"
+            reply_markup = [["Абсолютный", "Относительно биржи"]]
+        elif state == "type_price":
+            # FIXME
+            # self._validator.validate_amount(m.text)
+
+            if m.text == "Абсолютный":
+                self._sessions[m.user_id]["order"].relative_rate = Decimal("-1.0")
+
+                self._app_db.update(
+                    {
+                        "order": {
+                            **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                            "type_price": "Absolute",
+                        }
+                    },  # FIXME
+                    Query().user_id == m.user_id,
+                )
+                text = "Введите желаемый курс обмена в AMD/RUB. Например: 4.54"
+            elif m.text == "Относительно биржи":
+                self._sessions[m.user_id]["order"].relative_rate = None
+                # self._sessions[m.user_id]["order"].type = OrderType.SELL
+                self._app_db.update(
+                    {
+                        "order": {
+                            **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                            "type_price": "Relative",
+                        }
+                    },
+                    Query().user_id == m.user_id,
+                )
+                text = (
+                    "Введите желаемый курс обмена относительно бирже. Например: 1.01 "
+                    "(выше биржевого на 1%) или 0.98 (ниже биржевого на 2%)\n"
+                    f"Текущий курс: {self._ex.currency_rate['rate']} AMD/RUB"
+                )
+            else:
+                raise ValueError(f"Invalid type_price: {m.text}")
+
+            self._sessions[m.user_id]["order_creation_state_machine"].set_type_price()
             self._app_db.update({"order_creation_state_machine": "price"}, Query().user_id == m.user_id)
-            text = "Введите желаемую цену за единицу валюты (курс обмена)"
             reply_markup = None
         elif state == "price":
             self._validator.validate_price(m.text)
-            self._sessions[m.user_id]["order"].price = Decimal(m.text)
+            if self._sessions[m.user_id]["order"].relative_rate is None:
+                # relative rate
+                self._sessions[m.user_id]["order"].price = Decimal(
+                    Decimal(m.text) * self._ex.currency_rate["rate"]
+                ).quantize(Decimal("0.01"))
+                self._sessions[m.user_id]["order"].relative_rate = Decimal(m.text)
+                print("We are in relative rate")
+                print("Relative rate: ", self._sessions[m.user_id]["order"].relative_rate)
+                print("Price: ", self._sessions[m.user_id]["order"].price)
+            else:
+                # absolute rate
+                self._sessions[m.user_id]["order"].price = Decimal(m.text)
+                print("We are in abs price")
+                print("Relative rate: ", self._sessions[m.user_id]["order"].relative_rate)
+                print("Price: ", self._sessions[m.user_id]["order"].price)
+
             self._sessions[m.user_id]["order_creation_state_machine"].set_price()
             self._app_db.update(
-                {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "price": m.text}},
+                {
+                    "order": {
+                        **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                        "price": str(self._sessions[m.user_id]["order"].price),
+                    }
+                },
+                Query().user_id == m.user_id,
+            )
+            self._app_db.update(
+                {
+                    "order": {
+                        **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                        "relative_rate": str(self._sessions[m.user_id]["order"].relative_rate),
+                    }
+                },
                 Query().user_id == m.user_id,
             )
             self._app_db.update({"order_creation_state_machine": "min_op_threshold"}, Query().user_id == m.user_id)
-            text = "Введите минимальный порог операции"
+            text = "Введите минимальный порог операции (RUB)"
             reply_markup = None
         elif state == "min_op_threshold":
             self._validator.validate_min_op_threshold(m.text, self._sessions[m.user_id]["order"].amount_initial)
