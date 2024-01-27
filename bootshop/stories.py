@@ -1,12 +1,14 @@
 from dataclasses import dataclass, field
 from collections import OrderedDict
 from enum import Enum
+from typing import Optional, Union
 
 
 @dataclass
 class StoryState:
     state: Enum
-    substate: "StoryState" = None
+    parent: Optional["StoryState"] = None
+    substate: Optional["StoryState"] = None
     data: dict = field(default_factory=dict)
 
     def __repr__(self):
@@ -36,24 +38,24 @@ class Message(Event):
 
 @dataclass
 class Controller:
+    subcontrollers: OrderedDict[Enum, "Controller"] = field(default_factory=OrderedDict)
 
-    def process_event(self, s: UserSession, e: Event):
-        print(f"{self.__class__.__name__}.process_event: {e} => {s.state.state}")
+    def __init__(self, initial_state: Enum):
+        self.subcontrollers = OrderedDict()
+        self.initial_state = initial_state
 
-    def render(self, s: UserSession):
-        raise NotImplementedError()
+    def render(self, s: StoryState):
+        ctl = self.subcontrollers[s.state]
+        if s.substate is None:
+            s.substate = StoryState(ctl.initial_state, s)
+        ctl.render(s.substate)
 
-
-@dataclass
-class StoryController(Controller):
-    subcontrollers: OrderedDict[Enum, Controller] = field(default_factory=OrderedDict)
-
-    def render(self, s: UserSession):
-        self.subcontrollers[s.state.state].render(s)
-
-    def process_event(self, s: UserSession, e: Event):
-        Controller.process_event(self, s, e)
-        self.subcontrollers[s.state.state].process_event(s, e)
+    def process_event(self, s: StoryState, e: Event):
+        print(f"{self.__class__.__name__}.process_event: {e} => {s.state}")
+        ctl = self.subcontrollers[s.state]
+        if s.substate is None:
+            s.substate = StoryState(ctl.initial_state, s)
+        ctl.process_event(s.substate, e)
 
     def __repr__(self):
         lines = []
@@ -65,15 +67,32 @@ class StoryController(Controller):
 @dataclass
 class Button:
     text: str
-    action: str = None
+    action: Optional[str] = None
+
+    def __post_init__(self):
+        if self.action is None:
+            self.action = self.text.lower()
 
 
 @dataclass
 class ScreenController(Controller):
+    class ScreenState(Enum):
+        SCREEN = 1
+
     text: str = ""
     buttons: list[Button] = field(default_factory=list)
 
-    def render(self, s: UserSession):
+    def __init__(self, text: str, buttons: Optional[list[Button]] = None):
+        Controller.__init__(self, initial_state=ScreenController.ScreenState.SCREEN)
+        self.text = text
+        if buttons is None:
+            buttons = []
+        self.buttons = buttons
+
+    def process_event(self, s: StoryState, e: Event):
+        pass
+
+    def render(self, _: StoryState):
         self._render_text()
         print("")
         self._render_buttons()
@@ -88,9 +107,9 @@ class ScreenController(Controller):
 
 @dataclass
 class Dispatcher:
-    root: StoryController
+    root: Controller
 
-    def dispath(self, s: UserSession, e: Event):
+    def dispath(self, s: StoryState, e: Event):
         print(f"Dispatching {e} to {id(root)}")
         self.root.process_event(s, e)
 
@@ -110,7 +129,7 @@ if __name__ == "__main__":
         CONFIRM_CANCELING = 100
         ENTER_OTHER = 200
 
-    class MainController(StoryController):
+    class MainController(Controller):
         class AboutController(ScreenController):
             def __init__(self):
                 ScreenController.__init__(self, text=("В [Название магазина] мы объединяем нашу любовь к аргентинскому "
@@ -120,15 +139,19 @@ if __name__ == "__main__":
                                                       "танцорам выразить себя в каждом движении."),
                                           buttons=[Button("Понятно", "ok")])
 
-            def process_event(self, s: UserSession, e: Event):
+            def process_event(self, s: StoryState, e: Event):
                 ScreenController.process_event(self, s, e)
+                print("AboutController.process_event")
                 if isinstance(e, Action):
-                    s.state.state = MainState.IDLE
+                    if s.parent is not None:
+                        s.parent.state = MainState.IDLE
+                    else:
+                        raise Exception("AboutController.process_event: parent is None")
                 elif isinstance(e, Message):
                     raise NotImplementedError()
 
         def __init__(self):
-            StoryController.__init__(self)
+            Controller.__init__(self, initial_state=MainState.IDLE)
             self.subcontrollers[MainState.IDLE] = ScreenController(
                 text="Привет! Это магазин обуви. Чего желаете?",
                 buttons=[Button("Заказать", "order"), Button("О магазине", "about")]
@@ -136,33 +159,33 @@ if __name__ == "__main__":
             self.subcontrollers[MainState.ORDERING] = OrderingController()
             self.subcontrollers[MainState.ABOUT] = MainController.AboutController()
 
-        def process_event(self, s: UserSession, e: Event):
-            StoryController.process_event(self, s, e)
+        def process_event(self, s: StoryState, e: Event):
+            Controller.process_event(self, s, e)
             if isinstance(e, Action):
                 if e.name == "order":
-                    s.state = StoryState(MainState.ORDERING)
+                    s.state = MainState.ORDERING
                 elif e.name == "about":
-                    s.state = StoryState(MainState.ABOUT)
+                    s.state = MainState.ABOUT
             elif isinstance(e, Message):
                 raise NotImplementedError()
 
-    class OrderingController(StoryController):
+    class OrderingController(Controller):
         class SizeController(ScreenController):
             def __init__(self):
                 ScreenController.__init__(self, text="Выберите размер:",
                                           buttons=[Button("34"), Button("35"), Button("36"), Button("37"), Button("38"),
                                                    Button("39"), Button("40"), Button("Другой"), Button("Отмена")])
 
-            def process_event(self, s: UserSession, e: Event):
+            def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
                     if e.name == "other":
-                        s.state = StoryState(OrderingState.ENTER_OTHER)
+                        s.state = OrderingState.ENTER_OTHER
                     elif e.name == "cancel":
-                        s.state = StoryState(MainState.IDLE)
+                        s.state = MainState.IDLE
                     else:
                         size = int(e.name)
-                        s.state.data["size"] = size
-                        s.state = StoryState(OrderingState.KABLUK)
+                        s.data["size"] = size
+                        s.state = OrderingState.KABLUK
                 elif isinstance(e, Message):
                     raise NotImplementedError()
 
@@ -172,18 +195,18 @@ if __name__ == "__main__":
                                           buttons=[Button("3"), Button("9"), Button("10"), Button("85"), Button("105"),
                                                    Button("Другой"), Button("Назад"), Button("Отмена")])
 
-            def process_event(self, s: UserSession, e: Event):
+            def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
                     if e.name == "other":
-                        s.state = StoryState(OrderingState.ENTER_OTHER)
+                        s.state = OrderingState.ENTER_OTHER
                     elif e.name == "cancel":
-                        s.state = StoryState(MainState.IDLE)
+                        s.state = MainState.IDLE
                     elif e.name == "back":
-                        s.state = StoryState(OrderingState.SIZE)
+                        s.state = OrderingState.SIZE
                     else:
                         kabluk = int(e.name)
-                        s.state.data["kabluk"] = kabluk
-                        s.state = StoryState(OrderingState.PYATKA)
+                        s.data["kabluk"] = kabluk
+                        s.state = OrderingState.PYATKA
                 elif isinstance(e, Message):
                     raise NotImplementedError()
 
@@ -193,18 +216,18 @@ if __name__ == "__main__":
                                           buttons=[Button("3"), Button("5"), Button("7"), Button("9"), Button("Другой"),
                                                    Button("Назад"), Button("Отмена")])
 
-            def process_event(self, s: UserSession, e: Event):
+            def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
                     if e.name == "other":
-                        s.state = StoryState(OrderingState.ENTER_OTHER)
+                        s.state = OrderingState.ENTER_OTHER
                     elif e.name == "cancel":
-                        s.state = StoryState(MainState.IDLE)
+                        s.state = MainState.IDLE
                     elif e.name == "back":
-                        s.state = StoryState(OrderingState.KABLUK)
+                        s.state = OrderingState.KABLUK
                     else:
                         pyatka = int(e.name)
-                        s.state.data["pyatka"] = pyatka
-                        s.state = StoryState(OrderingState.COLOR)
+                        s.data["pyatka"] = pyatka
+                        s.state = OrderingState.COLOR
                 elif isinstance(e, Message):
                     raise NotImplementedError()
 
@@ -214,18 +237,18 @@ if __name__ == "__main__":
                                           buttons=[Button("Черный"), Button("Бежевый"), Button("Белый"), Button("Другой"),
                                                    Button("Назад"), Button("Отмена")])
 
-            def process_event(self, s: UserSession, e: Event):
+            def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
                     if e.name == "other":
-                        s.state = StoryState(OrderingState.ENTER_OTHER)
+                        s.state = OrderingState.ENTER_OTHER
                     elif e.name == "cancel":
-                        s.state = StoryState(MainState.IDLE)
+                        s.state = MainState.IDLE
                     elif e.name == "back":
-                        s.state = StoryState(OrderingState.PYATKA)
+                        s.state = OrderingState.PYATKA
                     else:
                         color = e.name
-                        s.state.data["color"] = color
-                        s.state = StoryState(OrderingState.CONFIRM)
+                        s.data["color"] = color
+                        s.state = OrderingState.CONFIRM
                 elif isinstance(e, Message):
                     raise NotImplementedError()
 
@@ -234,14 +257,14 @@ if __name__ == "__main__":
                 ScreenController.__init__(self, text="Подтвердите заказ:",
                                           buttons=[Button("Да, разместить заказ"), Button("Назад"), Button("Отмена")])
 
-            def process_event(self, s: UserSession, e: Event):
+            def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
                     if e.name == "back":
-                        s.state = StoryState(OrderingState.COLOR)
+                        s.state = OrderingState.COLOR
                     elif e.name == "cancel":
-                        s.state = StoryState(MainState.IDLE)
+                        s.state = MainState.IDLE
                     else:
-                        s.state = StoryState(MainState.IDLE)
+                        s.state = MainState.IDLE
                 elif isinstance(e, Message):
                     raise NotImplementedError()
 
@@ -250,12 +273,12 @@ if __name__ == "__main__":
                 ScreenController.__init__(self, text="Введите значение:",
                                           buttons=[Button("Назад"), Button("Отмена")])
 
-            def process_event(self, s: UserSession, e: Event):
+            def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
                     if e.name == "back":
-                        s.state = StoryState(OrderingState.CONFIRM)
+                        s.state = OrderingState.CONFIRM
                     elif e.name == "cancel":
-                        s.state = StoryState(MainState.IDLE)
+                        s.state = MainState.IDLE
                     else:
                         raise NotImplementedError()
                 elif isinstance(e, Message):
@@ -266,19 +289,19 @@ if __name__ == "__main__":
                 ScreenController.__init__(self, text="Хотите прервать заказ?",
                                           buttons=[Button("Да"), Button("Нет")])
 
-            def process_event(self, s: UserSession, e: Event):
+            def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
                     if e.name == "back":
-                        s.state = StoryState(OrderingState.CONFIRM)
+                        s.state = OrderingState.CONFIRM
                     elif e.name == "cancel":
-                        s.state = StoryState(MainState.IDLE)
+                        s.state = MainState.IDLE
                     else:
                         raise NotImplementedError()
                 elif isinstance(e, Message):
                     raise NotImplementedError()
 
         def __init__(self):
-            StoryController.__init__(self)
+            Controller.__init__(self, initial_state=OrderingState.SIZE)
             self.subcontrollers[OrderingState.SIZE] = OrderingController.SizeController()
             self.subcontrollers[OrderingState.KABLUK] = OrderingController.KablukController()
             self.subcontrollers[OrderingState.PYATKA] = OrderingController.PyatkaController()
@@ -293,14 +316,20 @@ if __name__ == "__main__":
     disp = Dispatcher(root=root)
 
     while True:
-        root.render(ses)
+        print("=====================================")
+        root.render(ses.state)
 
-        print(f"State: {ses.state}")
-        line = input(">>> ")
+        try:
+            line = input(f"{ses.state.state} >>> ")
+        except EOFError:
+            break
+        except KeyboardInterrupt:
+            break
 
         if line.startswith("#"):
-            ev = Action(1, name=line[1:])
+            ev: Union[Action, Message] = Action(1, name=line[1:])
         else:
             ev = Message(1, text=line)
 
-        root.process_event(ses, ev)
+        print("=====================================")
+        root.process_event(ses.state, ev)
