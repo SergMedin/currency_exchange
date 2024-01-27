@@ -5,6 +5,7 @@ from ..exchange import Exchange
 from ..db_sqla import SqlDb
 from ..data import Order, User, OrderType
 from ..gsheets_loger import GSheetsLoger
+from ..config import ORDER_LIFETIME_LIMIT
 from decimal import Decimal
 import os
 
@@ -170,7 +171,7 @@ class T(unittest.TestCase):
                     price=100.0,
                     amount_initial=100.0,
                     min_op_threshold=50.0,
-                    lifetime_sec=50 * 60 * 60,
+                    lifetime_sec=ORDER_LIFETIME_LIMIT + 1,
                 )
             )
 
@@ -187,6 +188,8 @@ class T(unittest.TestCase):
             "total_amount_sellers": Decimal("0"),
         }
         result = self.exchange.get_stats()["data"]
+        self.assertIn("currency_rate", result.keys())
+        del result["currency_rate"]
         self.assertEqual(result, expected_result)
 
     def testGetStatsWithOrders(self):
@@ -233,6 +236,8 @@ class T(unittest.TestCase):
             "total_amount_sellers": Decimal("1000"),
         }
         result = self.exchange.get_stats()["data"]
+        self.assertIn("currency_rate", result.keys())
+        del result["currency_rate"]
         self.assertEqual(result, expected_result)
 
     def test_loger_simple(self):
