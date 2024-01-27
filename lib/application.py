@@ -475,7 +475,7 @@ class Application:
                 )
 
             text += "\n\nto remove an order, use /remove <id>"
-            self._send_message(m.user_id, m.user_name, text)
+            self._send_message(m.user_id, m.user_name, text, reply_markup=self.MAIN_MENU_BUTTONS)
 
     def _handle_remove_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_remove_command_params(params, self._ex, m.user_id)
