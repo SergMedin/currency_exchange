@@ -6,7 +6,8 @@ import time
 import logging
 import deepdiff
 from typing import Dict
-from lib.tg import TelegramReal, Tg, TgIncomingMsg, TgOutgoingMsg
+from lib.tg import Tg, TgIncomingMsg, TgOutgoingMsg
+from bootshop.tg2 import TgReal2
 from lib.gspreads import GSpreadsTable, GSpreadsTableMock
 
 # Привет! Какой нужен каблук?
@@ -138,7 +139,7 @@ def init():
     gs_key = os.getenv("BOOTSHOP_GS_KEY")
     gs_sheet = os.getenv("BOOTSHOP_GS_SHEET")
     gs_cfg = GoogleSheetsConfig(gs_cred_filename, gs_key, gs_sheet)
-    telegram = TelegramReal(token=tg_token)
+    telegram = TgReal2(token=tg_token)
     ShoesShopApp(tg=telegram, gsheets_config=gs_cfg)
     return telegram
 
