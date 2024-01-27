@@ -3,6 +3,7 @@ import datetime
 import os
 
 from tinydb import TinyDB, Query
+from dotenv import load_dotenv
 
 from .db import Db
 from .tg import Tg, TgIncomingMsg, TgOutgoingMsg
@@ -13,6 +14,7 @@ from .data import Match, Order, User, OrderType
 from .logger import get_logger
 from .statemachines import OrderCreation
 
+from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMockClient
 from .config import ORDER_LIFETIME_LIMIT
 
 logger = get_logger(__name__)
@@ -110,11 +112,21 @@ class Application:
     # TODO:
     # - add lifetime to orders
 
-    def __init__(self, db: Db, tg: Tg, zmq_orders_log_endpoint=None, log_spreadsheet_key=None):
+    def __init__(self, db: Db, tg: Tg, zmq_orders_log_endpoint=None, log_spreadsheet_key=None, debug_mode=False):
         self._db = db
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
-        self._ex = Exchange(self._db, self._on_match, zmq_orders_log_endpoint)
+
+        if debug_mode is False:
+            load_dotenv()
+            currency_client_api_key = os.getenv("EXCH_CURRENCYFREAKS_TOKEN")
+            currency_client = CurrencyFreaksClient(currency_client_api_key)
+            currency_converter = CurrencyConverter(currency_client)
+        else:
+            currency_client = CurrencyMockClient()
+            currency_converter = CurrencyConverter(currency_client)
+
+        self._ex = Exchange(self._db, currency_converter, self._on_match, zmq_orders_log_endpoint)
         self._sessions = {}
         self._app_db = TinyDB("./tg_data/app_db.json")
 

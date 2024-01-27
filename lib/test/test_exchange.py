@@ -1,13 +1,14 @@
 import time
 import unittest
 import threading
+from decimal import Decimal
+import os
 from ..exchange import Exchange
 from ..db_sqla import SqlDb
 from ..data import Order, User, OrderType
 from ..gsheets_loger import GSheetsLoger
 from ..config import ORDER_LIFETIME_LIMIT
-from decimal import Decimal
-import os
+from ..currency_rates import CurrencyConverter, CurrencyMockClient
 
 from ..logger import get_logger
 
@@ -25,7 +26,12 @@ class T(unittest.TestCase):
             seq_no = T.no
             T.no += 1
         endp = f"inproc://orders.log.{seq_no}"
-        self.exchange = Exchange(self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp)
+
+        currency_client = CurrencyMockClient()
+        currency_converter = CurrencyConverter(currency_client)
+        self.exchange = Exchange(
+            self.db, currency_converter, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp
+        )
         gsk = os.getenv("GOOGLE_SPREADSHEET_KEY", None)
         gsst = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
         self.loger = GSheetsLoger(endp, gsk, gsst)
@@ -38,7 +44,9 @@ class T(unittest.TestCase):
 
     def testConstruction(self):
         logger.debug("[ testConstruction ]".center(80, "|"))
-        Exchange(self.db, None)
+        currency_client = CurrencyMockClient()
+        currency_converter = CurrencyConverter(currency_client)
+        Exchange(self.db, currency_converter, None)
 
     def testProcessMatchesSingleMatch(self):
         self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60))
@@ -262,7 +270,11 @@ class ExchangeTestsWithDatabaseFile(unittest.TestCase):
             seq_no = T.no
             T.no += 1
         endp = f"inproc://orders.log.{seq_no}"
-        self.exchange = Exchange(self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp)
+        currency_client = CurrencyMockClient()
+        currency_converter = CurrencyConverter(currency_client)
+        self.exchange = Exchange(
+            self.db, currency_converter, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp
+        )
         gsk = os.getenv("GOOGLE_SPREADSHEET_KEY", None)
         gsst = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
         self.loger = GSheetsLoger(endp, gsk, gsst)
@@ -281,7 +293,9 @@ class ExchangeTestsWithDatabaseFile(unittest.TestCase):
         self.exchange.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1000.0, 100.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.exchange._orders), 1)
         self.matches = []
-        self.exchange = Exchange(self.db, lambda m: self.matches.append(m))
+        currency_client = CurrencyMockClient()
+        currency_converter = CurrencyConverter(currency_client)
+        self.exchange = Exchange(self.db, currency_converter, lambda m: self.matches.append(m))
         self.assertEqual(len(self.exchange._orders), 1)
         self.assertEqual(self.exchange._orders[1].amount_initial, 1400)
         self.assertEqual(self.exchange._orders[1].amount_left, 400)

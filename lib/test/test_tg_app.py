@@ -16,7 +16,7 @@ class TestTgApp(unittest.TestCase):
     def setUp(self):
         self.tg = TelegramMock()
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg)
+        self.app = Application(self.db, self.tg, debug_mode=True)
 
     def test_simple_match(self):
         self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1")
@@ -114,7 +114,7 @@ class TestTGAppSM(unittest.TestCase):
     def setUp(self):
         self.tg = TelegramMock()
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg)
+        self.app = Application(self.db, self.tg, debug_mode=True)
 
     def _bot_start(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
