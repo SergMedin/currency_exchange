@@ -5,6 +5,20 @@ import os
 from decimal import Decimal
 
 
+class CurrencyMockClient:
+    def __init__(self):
+        self.rates = {
+            "RUB": 0.1000,
+            "AMD": 0.4540,
+        }
+
+    def get_rate(self, currency):
+        return {
+            "rate": self.rates.get(currency),
+            "date": "2021-01-01",
+        }
+
+
 class CurrencyFreaksClient:
     def __init__(self, api_key):
         self.api_key = api_key
@@ -46,10 +60,8 @@ class CurrencyFreaksClient:
 
 
 class CurrencyConverter:
-    def __init__(self):
-        load_dotenv()
-        api_key = os.getenv("EXCH_CURRENCYFREAKS_TOKEN")
-        self.currency_client = CurrencyFreaksClient(api_key)
+    def __init__(self, currency_client=None):
+        self.currency_client = currency_client
 
     def get_rate(self, from_currency, to_currency):
         from_rate = self.currency_client.get_rate(from_currency)
@@ -67,7 +79,16 @@ class CurrencyConverter:
 
 
 if __name__ == "__main__":
-    converter = CurrencyConverter()
+    load_dotenv()
+    api_key = os.getenv("EXCH_CURRENCYFREAKS_TOKEN")
+    currency_client = CurrencyFreaksClient(api_key)
+
+    converter = CurrencyConverter(currency_client)
+    rate = converter.get_rate("RUB", "AMD")
+    if rate:
+        print(f"1 RUB = {rate['rate']:.4f} AMD on {rate['date'] }")
+
+    converter = CurrencyConverter(CurrencyMockClient())
     rate = converter.get_rate("RUB", "AMD")
     if rate:
         print(f"1 RUB = {rate['rate']:.4f} AMD on {rate['date'] }")

@@ -7,7 +7,6 @@ import pickle
 from decimal import Decimal
 from .db import Db
 from . import data
-from .currency_rates import CurrencyConverter
 
 from .logger import get_logger
 
@@ -17,7 +16,7 @@ logger = get_logger(__name__)
 class Exchange:
     # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
-    def __init__(self, db: Db, on_match=None, zmq_orders_log_endpoint=None):
+    def __init__(self, db: Db, currency_client, on_match=None, zmq_orders_log_endpoint=None):
         self._db = db
         self._on_match = on_match
         orders = []
@@ -28,7 +27,7 @@ class Exchange:
         self._orders: dict[int, data.Order] = dict(orders)
         self.last_match_price = self._db.get_last_match_price()
 
-        self.currency_converter = CurrencyConverter()
+        self.currency_converter = currency_client
         self.currency_rate = self.currency_converter.get_rate("RUB", "AMD")
 
     def dtor(self):
