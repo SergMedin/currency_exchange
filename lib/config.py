@@ -1,2 +1,3 @@
-ORDER_LIFETIME_LIMIT = 48 * 60 * 60  # seconds
+ORDER_LIFETIME_LIMIT = 30 * 24 * 60 * 60  # seconds
+CHECK_RATES_TIME_PERIOD_SEC = 6 * 60 * 60
 ZMQ_ORDERS_LOG_ENDPOINT = "inproc://orders.log"

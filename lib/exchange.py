@@ -4,6 +4,7 @@ import dataclasses
 import unittest
 import zmq
 import pickle
+from decimal import Decimal
 from .db import Db
 from . import data
 from .currency_rates import CurrencyConverter
@@ -66,13 +67,24 @@ class Exchange:
         for o in expired_orders:
             self.remove_order(o._id)
 
-    def _process_matches(self) -> None:
-        # working with relative rates
+    def _update_prices(self) -> None:
+        """
+        Update the prices of the orders in the exchange.
+
+        This method iterates through all the orders in the exchange and updates their prices.
+        The prices are updated according to the current exchange rate.
+
+        Returns:
+            None
+        """
         self.currency_rate = self.currency_converter.get_rate("RUB", "AMD")
         for order in self._orders.values():
             if order.relative_rate != -1.0 and order.price != self.currency_rate["rate"] * order.relative_rate:
-                order.price = self.currency_rate["rate"] * order.relative_rate
+                order.price = Decimal(self.currency_rate["rate"] * order.relative_rate).quantize(Decimal("0.0001"))
                 self._db.update_order(order)
+
+    def _process_matches(self) -> None:
+        self._update_prices()
 
         sellers = sorted(
             [o for o in self._orders.values() if o.type == data.OrderType.SELL],
@@ -137,6 +149,8 @@ class Exchange:
         self._db.remove_order(_id)
 
     def get_stats(self) -> dict:
+        self._update_prices()
+
         sellers = [o for o in self._orders.values() if o.type == data.OrderType.SELL]
         buyers = [o for o in self._orders.values() if o.type == data.OrderType.BUY]
 

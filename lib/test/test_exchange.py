@@ -5,6 +5,7 @@ from ..exchange import Exchange
 from ..db_sqla import SqlDb
 from ..data import Order, User, OrderType
 from ..gsheets_loger import GSheetsLoger
+from ..config import ORDER_LIFETIME_LIMIT
 from decimal import Decimal
 import os
 
@@ -24,9 +25,7 @@ class T(unittest.TestCase):
             seq_no = T.no
             T.no += 1
         endp = f"inproc://orders.log.{seq_no}"
-        self.exchange = Exchange(
-            self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp
-        )
+        self.exchange = Exchange(self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp)
         gsk = os.getenv("GOOGLE_SPREADSHEET_KEY", None)
         gsst = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
         self.loger = GSheetsLoger(endp, gsk, gsst)
@@ -42,27 +41,17 @@ class T(unittest.TestCase):
         Exchange(self.db, None)
 
     def testProcessMatchesSingleMatch(self):
-        self.exchange.on_new_order(
-            Order(User(1), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
-        self.exchange.on_new_order(
-            Order(User(2), OrderType.BUY, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 1)
         self.assertEqual(self.matches[0].sell_order.amount_left, 0)
         self.assertEqual(self.matches[0].buy_order.amount_left, 0)
 
     def testProcessMatchesMultipleMatches(self):
-        self.exchange.on_new_order(
-            Order(User(1), OrderType.SELL, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
-        self.exchange.on_new_order(
-            Order(User(2), OrderType.SELL, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.SELL, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.exchange._orders), 2)
-        self.exchange.on_new_order(
-            Order(User(3), OrderType.BUY, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(3), OrderType.BUY, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 2)
         self.assertEqual(len(self.exchange._orders), 0)
         self.assertEqual(self.matches[0].sell_order.amount_left, 0)
@@ -71,16 +60,10 @@ class T(unittest.TestCase):
         self.assertEqual(self.matches[1].buy_order.amount_left, 0)
 
     def testProcessMatchesMultipleMatches2(self):
-        self.exchange.on_new_order(
-            Order(User(1), OrderType.BUY, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
-        self.exchange.on_new_order(
-            Order(User(2), OrderType.BUY, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.BUY, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.exchange._orders), 2)
-        self.exchange.on_new_order(
-            Order(User(3), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(3), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 2)
         self.assertEqual(len(self.exchange._orders), 0)
         self.assertEqual(self.matches[0].sell_order.amount_left, 50)
@@ -89,108 +72,56 @@ class T(unittest.TestCase):
         self.assertEqual(self.matches[1].buy_order.amount_left, 0)
 
     def testProcessMatchesPartialMatch(self):
-        self.exchange.on_new_order(
-            Order(User(1), OrderType.SELL, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
-        self.exchange.on_new_order(
-            Order(User(2), OrderType.BUY, 10.0, 150.0, 25.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 150.0, 25.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 1)
         self.assertEqual(self.matches[-1].sell_order.amount_left, 0)
         self.assertEqual(self.matches[-1].buy_order.amount_left, 100.0)
-        self.exchange.on_new_order(
-            Order(User(1), OrderType.SELL, 10.0, 200.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 200.0, 50.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 2)
         self.assertEqual(self.matches[-1].sell_order.amount_left, 100.0)
         self.assertEqual(self.matches[-1].buy_order.amount_left, 0)
 
     def testProcessMatchesOrderRemoval(self):
-        self.exchange.on_new_order(
-            Order(User(1), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
-        self.exchange.on_new_order(
-            Order(User(2), OrderType.BUY, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.exchange._orders), 0)
 
     def testProcessMatchesMinOpThresholdUpdate(self):
-        self.exchange.on_new_order(
-            Order(User(1), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60)
-        )
-        self.exchange.on_new_order(
-            Order(User(2), OrderType.BUY, 10.0, 120.0, 75.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 100.0, 50.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 120.0, 75.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(self.exchange._orders[2].min_op_threshold, 20.0)
 
     def testDifferentPricesSellMoreThanBuy(self):
         logger.debug("[ testDifferentPricesSellMoreThanBuy ]".center(80, "|"))
-        self.exchange.on_new_order(
-            Order(
-                User(1), OrderType.SELL, 10.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.exchange.on_new_order(
-            Order(User(2), OrderType.BUY, 9.8, 1299.0, 500.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 10.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 9.8, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 0)
 
     def testDifferentPricesSellLessThanBuy(self):
         logger.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
-        self.exchange.on_new_order(
-            Order(
-                User(1), OrderType.SELL, 9.81, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.exchange.on_new_order(
-            Order(
-                User(2), OrderType.BUY, 10.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 9.81, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 1)
 
     def testManyOrders(self):
         logger.debug("[ testManyOrders ]".center(80, "|"))
-        self.exchange.on_new_order(
-            Order(
-                User(1), OrderType.SELL, 100.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.exchange.on_new_order(
-            Order(
-                User(2), OrderType.BUY, 98.0, 1500.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.exchange.on_new_order(
-            Order(
-                User(3), OrderType.BUY, 102.0, 1500.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.exchange.on_new_order(
-            Order(
-                User(1), OrderType.SELL, 120.0, 2000.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 100.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1500.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(3), OrderType.BUY, 102.0, 1500.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 120.0, 2000.0, 500.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 1)
 
     def testMinOpThresholdSuitable(self):
         logger.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
-        self.exchange.on_new_order(
-            Order(User(1), OrderType.SELL, 4.51, 1000, 500.0, lifetime_sec=48 * 60 * 60)
-        )
-        self.exchange.on_new_order(
-            Order(User(2), OrderType.BUY, 4.55, 2000, 1000.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 4.51, 1000, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 4.55, 2000, 1000.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 1)
 
     def testMinOpThresholdUnsuitable(self):
         logger.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
-        self.exchange.on_new_order(
-            Order(User(1), OrderType.SELL, 4.51, 1000, 500.0, lifetime_sec=48 * 60 * 60)
-        )
-        self.exchange.on_new_order(
-            Order(User(2), OrderType.BUY, 4.55, 2000, 2000.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 4.51, 1000, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 4.55, 2000, 2000.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 0)
 
     def testOrderLifetimeExceeded(self):
@@ -240,7 +171,7 @@ class T(unittest.TestCase):
                     price=100.0,
                     amount_initial=100.0,
                     min_op_threshold=50.0,
-                    lifetime_sec=50 * 60 * 60,
+                    lifetime_sec=ORDER_LIFETIME_LIMIT + 1,
                 )
             )
 
@@ -310,16 +241,8 @@ class T(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
     def test_loger_simple(self):
-        self.exchange.on_new_order(
-            Order(
-                User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.exchange.on_new_order(
-            Order(
-                User(2), OrderType.BUY, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 1)
         time.sleep(0.1)
         t = self.loger._gst
@@ -339,9 +262,7 @@ class ExchangeTestsWithDatabaseFile(unittest.TestCase):
             seq_no = T.no
             T.no += 1
         endp = f"inproc://orders.log.{seq_no}"
-        self.exchange = Exchange(
-            self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp
-        )
+        self.exchange = Exchange(self.db, lambda m: self.matches.append(m), zmq_orders_log_endpoint=endp)
         gsk = os.getenv("GOOGLE_SPREADSHEET_KEY", None)
         gsst = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
         self.loger = GSheetsLoger(endp, gsk, gsst)
@@ -356,24 +277,14 @@ class ExchangeTestsWithDatabaseFile(unittest.TestCase):
         return super().tearDown()
 
     def testPersistance(self):
-        self.exchange.on_new_order(
-            Order(
-                User(1), OrderType.SELL, 98.0, 1400.0, 100.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.exchange.on_new_order(
-            Order(
-                User(2), OrderType.BUY, 98.0, 1000.0, 100.0, lifetime_sec=48 * 60 * 60
-            )
-        )
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 98.0, 1400.0, 100.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 98.0, 1000.0, 100.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.exchange._orders), 1)
         self.matches = []
         self.exchange = Exchange(self.db, lambda m: self.matches.append(m))
         self.assertEqual(len(self.exchange._orders), 1)
         self.assertEqual(self.exchange._orders[1].amount_initial, 1400)
         self.assertEqual(self.exchange._orders[1].amount_left, 400)
-        self.exchange.on_new_order(
-            Order(User(3), OrderType.BUY, 98.0, 400.0, 100.0, lifetime_sec=48 * 60 * 60)
-        )
+        self.exchange.on_new_order(Order(User(3), OrderType.BUY, 98.0, 400.0, 100.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 1)
         self.assertEqual(len(self.exchange._orders), 0)

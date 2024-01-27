@@ -49,9 +49,9 @@ class TestTgApp(unittest.TestCase):
         self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt 100 lifetime_h 1")
 
     def test_check_price_invalid_decimal(self):
-        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1000 RUB * 4.541 AMD min_amt 100 lifetime_h 1")
+        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1000 RUB * 4.54111 AMD min_amt 100 lifetime_h 1")
         self.assertIn(
-            "Price has more than two digits after the decimal point",
+            "Price has more than four digits after the decimal point",
             self.tg.outgoing[0].text,
         )
 
@@ -124,16 +124,16 @@ class TestTGAppSM(unittest.TestCase):
         self.assertEqual(tg_start_message, self.tg.outgoing[-1].text)
 
     def _sm_entrance(self):
-        self.tg.emulate_incoming_message(1, "Joe", "Создать заявку")
-        self.assertEqual("Выберите тип заявки", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "Create order")
+        self.assertEqual("Choose the type of order", self.tg.outgoing[-1].text)
 
     def _sm_type_invalid(self):
         self.tg.emulate_incoming_message(1, "Joe", "Обменяться телами")
         self.assertEqual("Error: Invalid order type: Обменяться телами", self.tg.outgoing[-1].text)
 
     def _sm_type_valid(self):
-        self.tg.emulate_incoming_message(1, "Joe", "Купить")
-        self.assertEqual("Введите сумму для обмена (RUB)", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "Buy rubles")
+        self.assertEqual("Enter the amount to exchange (RUB)", self.tg.outgoing[-1].text)
 
     def _sm_currency_from_invalid(self):
         self.tg.emulate_incoming_message(1, "Joe", "Йены")
@@ -164,13 +164,13 @@ class TestTGAppSM(unittest.TestCase):
     def _sm_amount_valid(self):
         self.tg.emulate_incoming_message(1, "Joe", "1000")
         self.assertEqual(
-            "Выберите тип курса",
+            "Choose the type of rate",
             self.tg.outgoing[-1].text,
         )
 
     def _sm_type_price_valid(self):
-        self.tg.emulate_incoming_message(1, "Joe", "Абсолютный")
-        self.assertEqual("Введите желаемый курс обмена в AMD/RUB. Например: 4.54", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "Absolute")
+        self.assertEqual("Enter the desired exchange rate in AMD/RUB. For example: 4.54", self.tg.outgoing[-1].text)
 
     def _sm_price_invalid(self):
         self.tg.emulate_incoming_message(1, "Joe", "INVALID")
@@ -182,7 +182,7 @@ class TestTGAppSM(unittest.TestCase):
 
     def _sm_price_valid(self):
         self.tg.emulate_incoming_message(1, "Joe", "98.1")
-        self.assertEqual("Введите минимальный порог операции (RUB)", self.tg.outgoing[-1].text)
+        self.assertEqual("Enter the minimum operational threshold in RUB", self.tg.outgoing[-1].text)
 
     def _sm_min_op_threshold_invalid(self):
         self.tg.emulate_incoming_message(1, "Joe", "INVALID")
@@ -201,7 +201,7 @@ class TestTGAppSM(unittest.TestCase):
     def _sm_min_op_treshhold_valid(self):
         self.tg.emulate_incoming_message(1, "Joe", "100")
         self.assertEqual(
-            "Введите время жизни заявки в часах (не более 48)",
+            "Enter the lifetime of the order in hours",
             self.tg.outgoing[-1].text,
         )
 
@@ -217,8 +217,8 @@ class TestTGAppSM(unittest.TestCase):
 
     def _sm_lifetime_valid(self):
         self.tg.emulate_incoming_message(1, "Joe", "1")
-        self.assertEqual(
-            "Подтвердите создание заявки",
+        self.assertIn(
+            "Confirm the order:",
             self.tg.outgoing[-1].text,
         )
 
@@ -227,12 +227,12 @@ class TestTGAppSM(unittest.TestCase):
         self.assertEqual("Error: Invalid command: INVALID", self.tg.outgoing[-1].text)
 
     def _sm_confirm_accept(self):
-        self.tg.emulate_incoming_message(1, "Joe", "Подтвердить")
+        self.tg.emulate_incoming_message(1, "Joe", "Confirm")
         self.assertEqual("Заявка создана", self.tg.outgoing[-1].text)
 
     def _sm_confirm_reject(self):
-        self.tg.emulate_incoming_message(1, "Joe", "Отменить")
-        self.assertEqual("Заявка отменена", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "Cancel")
+        self.assertEqual("The order was canceled", self.tg.outgoing[-1].text)
 
     # def test_order_creation_sm(self):
     #     with self.subTest("Bot start"):

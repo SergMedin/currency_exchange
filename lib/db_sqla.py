@@ -75,7 +75,7 @@ class SqlDb(Db):
             last_match_price = session.query(_DbLastMatchPrice).one_or_none()
             if last_match_price is None:
                 return None
-            return last_match_price.price.quantize(Decimal("0.01"))
+            return last_match_price.price.quantize(Decimal("0.0001"))
 
 
 class _Base(DeclarativeBase):
@@ -164,31 +164,34 @@ _ORDERS_TABLE = _Table(
             lambda x: parse_user_data(x),
         ),
         _Field(
-            "price", "price_cents", lambda x: int(x * 100), lambda x: x / Decimal(100.0)
-        ),
+            "price",
+            "price_cents",
+            lambda x: int(x * 10000),
+            lambda x: (x / Decimal(10000.0)).quantize(Decimal("0.0001")),
+        ),  # 4 digits after dot
         _Field(
             "amount_initial",
             "amount_initial_cents",
             lambda x: int(x * 100),
-            lambda x: x / Decimal(100.0),
+            lambda x: (x / Decimal(100.0)).quantize(Decimal("0.01")),
         ),
         _Field(
             "amount_left",
             "amount_left_cents",
             lambda x: int(x * 100),
-            lambda x: x / Decimal(100.0),
+            lambda x: (x / Decimal(100.0)).quantize(Decimal("0.01")),
         ),
         _Field(
             "min_op_threshold",
             "min_op_threshold_cents",
             lambda x: int(x * 100),
-            lambda x: x / Decimal(100.0),
+            lambda x: (x / Decimal(100.0)).quantize(Decimal("0.01")),
         ),
         _Field(
             "relative_rate",
             "relative_rate",
             lambda x: int(x * 10000),
-            lambda x: x / Decimal(10000.0),
+            lambda x: (x / Decimal(10000.0)).quantize(Decimal("0.0001")),
         ),
     ],
 )
@@ -199,9 +202,7 @@ class _T(unittest.TestCase):
         self.db = SqlDb()
 
     def test_store_order(self):
-        o = Order(
-            User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-        )
+        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60)
         o = self.db.store_order(o)
         self.assertEqual(OrderType.SELL, o.type)
 
@@ -221,31 +222,15 @@ class _T(unittest.TestCase):
         self.assertEqual(Decimal("50.1"), o.price)
 
     def test_iterate(self):
-        self.db.store_order(
-            Order(
-                User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.db.store_order(
-            Order(
-                User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
+        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
         orders = []
         self.db.iterate_orders(lambda o: orders.append(o))
         self.assertEqual(2, len(orders))
 
     def test_remove(self):
-        self.db.store_order(
-            Order(
-                User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        o = self.db.store_order(
-            Order(
-                User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
+        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        o = self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
         self.db.remove_order(o._id)
         orders = []
         self.db.iterate_orders(lambda o: orders.append(o))

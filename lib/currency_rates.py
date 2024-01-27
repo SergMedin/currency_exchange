@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 import os
 from decimal import Decimal
 
+from .config import CHECK_RATES_TIME_PERIOD_SEC
+
 
 class CurrencyFreaksClient:
     def __init__(self, api_key):
@@ -40,7 +42,7 @@ class CurrencyFreaksClient:
         print("Error: currency rates update failed")
 
     def schedule_rate_update(self):
-        timer = threading.Timer(86400, self.update_rates)
+        timer = threading.Timer(CHECK_RATES_TIME_PERIOD_SEC, self.update_rates)
         timer.daemon = True
         timer.start()
 
@@ -56,7 +58,7 @@ class CurrencyConverter:
         to_rate = self.currency_client.get_rate(to_currency)
         if from_rate and to_rate:
             rate = Decimal(to_rate["rate"]) / Decimal(from_rate["rate"])
-            rounded_rate = rate.quantize(Decimal("0.0000"))
+            rounded_rate = rate.quantize(Decimal("0.0001"))
             return {
                 "rate": rounded_rate,
                 "date": to_rate["date"],
