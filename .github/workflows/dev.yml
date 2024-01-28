@@ -82,9 +82,8 @@ jobs:
     - name: Main deploy
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.HOST }}
-        port: ${{ secrets.PORT }}
-        username: ${{ secrets.USER }}
+        host: ${{ secrets.DEV_HOST }}
+        username: ${{ secrets.DEV_USER }}
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         script: |
