@@ -72,9 +72,8 @@ jobs:
     - name: Copy docker-compose.dev.yml via ssh
       uses: appleboy/scp-action@master
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USER }}
-        port: ${{ secrets.PORT }}
+        host: ${{ secrets.DEV_HOST }}
+        username: ${{ secrets.DEV_USER }}
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         source: "docker-compose.dev.yml"
