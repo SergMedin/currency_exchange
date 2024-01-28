@@ -104,7 +104,7 @@ class Exchange:
                     and buyer.amount_left >= seller.min_op_threshold
                 ):
                     match_amount = min(buyer.amount_left, seller.amount_left)
-                    mid_price = round((seller.price + buyer.price) / 2, 2)
+                    mid_price = round((seller.price + buyer.price) / 2, 4)
                     seller.amount_left -= match_amount
                     buyer.amount_left -= match_amount
                     self._db.update_order(seller)

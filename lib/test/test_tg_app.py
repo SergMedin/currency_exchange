@@ -43,7 +43,7 @@ class TestTgApp(unittest.TestCase):
         # print('-'*80)
         # six messages: four about the added orders, two about the match
         self.assertEqual(6, len(self.tg.outgoing))
-        self.assertIn("for 98.10 per unit", self.tg.outgoing[-1].text)
+        self.assertIn("for 98.1000 per unit", self.tg.outgoing[-1].text)
 
     def test_check_price_valid(self):
         self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt 100 lifetime_h 1")

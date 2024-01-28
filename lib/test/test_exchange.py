@@ -108,9 +108,10 @@ class T(unittest.TestCase):
 
     def testDifferentPricesSellLessThanBuy(self):
         logger.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
-        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 9.81, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
-        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(1), OrderType.SELL, 9.8234, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.exchange.on_new_order(Order(User(2), OrderType.BUY, 10.5678, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
         self.assertEqual(len(self.matches), 1)
+        self.assertEqual(self.matches[-1].price, Decimal("10.1956"))
 
     def testManyOrders(self):
         logger.debug("[ testManyOrders ]".center(80, "|"))
