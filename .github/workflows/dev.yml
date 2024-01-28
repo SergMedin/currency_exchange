@@ -1,4 +1,4 @@
-name: Development Exchange-app workflow 
+name: Development Exchange-app workflow
 
 on:
   push:
