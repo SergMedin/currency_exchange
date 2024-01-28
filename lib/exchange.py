@@ -4,6 +4,7 @@ import dataclasses
 import unittest
 import zmq
 import pickle
+from decimal import Decimal
 from .db import Db
 from . import data
 
@@ -15,7 +16,7 @@ logger = get_logger(__name__)
 class Exchange:
     # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
-    def __init__(self, db: Db, on_match=None, zmq_orders_log_endpoint=None):
+    def __init__(self, db: Db, currency_client, on_match=None, zmq_orders_log_endpoint=None):
         self._db = db
         self._on_match = on_match
         orders = []
@@ -25,6 +26,9 @@ class Exchange:
         self._db.iterate_orders(lambda o: orders.append((o._id, o)))
         self._orders: dict[int, data.Order] = dict(orders)
         self.last_match_price = self._db.get_last_match_price()
+
+        self.currency_converter = currency_client
+        self.currency_rate = self.currency_converter.get_rate("RUB", "AMD")
 
     def dtor(self):
         if self._log_q:
@@ -58,16 +62,29 @@ class Exchange:
             None
         """
         current_time = time.time()
-        expired_orders = [
-            o
-            for o in self._orders.values()
-            if (current_time - o.creation_time) > o.lifetime_sec
-        ]
+        expired_orders = [o for o in self._orders.values() if (current_time - o.creation_time) > o.lifetime_sec]
         for o in expired_orders:
             self.remove_order(o._id)
 
+    def _update_prices(self) -> None:
+        """
+        Update the prices of the orders in the exchange.
+
+        This method iterates through all the orders in the exchange and updates their prices.
+        The prices are updated according to the current exchange rate.
+
+        Returns:
+            None
+        """
+        self.currency_rate = self.currency_converter.get_rate("RUB", "AMD")
+        for order in self._orders.values():
+            if order.relative_rate != -1.0 and order.price != self.currency_rate["rate"] * order.relative_rate:
+                order.price = Decimal(self.currency_rate["rate"] * order.relative_rate).quantize(Decimal("0.0001"))
+                self._db.update_order(order)
+
     def _process_matches(self) -> None:
-        logger.debug("=[ _process_matches: new iteration ]=".center(80, "-"))
+        self._update_prices()
+
         sellers = sorted(
             [o for o in self._orders.values() if o.type == data.OrderType.SELL],
             key=lambda x: x.creation_time,
@@ -131,6 +148,8 @@ class Exchange:
         self._db.remove_order(_id)
 
     def get_stats(self) -> dict:
+        self._update_prices()
+
         sellers = [o for o in self._orders.values() if o.type == data.OrderType.SELL]
         buyers = [o for o in self._orders.values() if o.type == data.OrderType.BUY]
 
@@ -170,24 +189,24 @@ class Exchange:
             total_amount_buyers = 0
 
         last_match_price_text = "LAST MATCH PRICE:\n" + (
-            f"{self.last_match_price} AMD/RUB"
-            if self.last_match_price
-            else "No matches yet"
+            f"{self.last_match_price} AMD/RUB" if self.last_match_price else "No matches yet"
         )
 
         return {
-            'data': {
-                'order_cnt': len(self._orders),
-                'user_cnt': len(set([o.user.id for o in self._orders.values()])),
-                'max_buyer_price': max_buyer_price,
-                'max_buyer_min_op_threshold': max_buyer_min_op_threshold,
-                'min_seller_price': min_seller_price,
-                'min_seller_min_op_threshold': min_seller_min_op_threshold,
-                'total_amount_sellers': total_amount_sellers,
-                'total_amount_buyers': total_amount_buyers,
-                'last_match_price': self.last_match_price,
+            "data": {
+                "currency_rate": self.currency_rate,
+                "order_cnt": len(self._orders),
+                "user_cnt": len(set([o.user.id for o in self._orders.values()])),
+                "max_buyer_price": max_buyer_price,
+                "max_buyer_min_op_threshold": max_buyer_min_op_threshold,
+                "min_seller_price": min_seller_price,
+                "min_seller_min_op_threshold": min_seller_min_op_threshold,
+                "total_amount_sellers": total_amount_sellers,
+                "total_amount_buyers": total_amount_buyers,
+                "last_match_price": self.last_match_price,
             },
-            'text': (
+            "text": (
+                f"Current exchange rate: {self.currency_rate['rate']} AMD/RUB on {self.currency_rate['date']}\n\n"
                 f"{last_match_price_text}\n\n"
                 f"BUYERS:\n"
                 f"Total amount (all buyers): "

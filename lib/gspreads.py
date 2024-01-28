@@ -44,6 +44,9 @@ class GSpreadsTable:
         with self.__class__._gapi_lock:
             self.sheet.freeze(rows, cols)
 
+    def col_values(self, col: int):
+        return self.sheet.col_values(col)
+
     @classmethod
     def _get_table(cls, table_key):
         with cls._gapi_lock:
@@ -113,6 +116,16 @@ class GSpreadsTableMock:
 
     def freeze(self, rows=None, cols=None):
         pass
+
+    def col_values(self, col: int):
+        rows = [c.row for c in self._d.values() if c.col == col]
+        if not rows:
+            return []
+        mrow = max(rows)
+        res = []
+        for row in range(1, mrow+2):
+            res.append(self.cell(row, col))
+        return res
 
 
 class TestGspreadMock(unittest.TestCase):
