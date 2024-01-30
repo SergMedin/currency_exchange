@@ -19,6 +19,12 @@ class CurrencyMockClient:
         }
 
 
+class RepeatTimer(threading.Timer):
+    def run(self):
+        while not self.finished.wait(self.interval):
+            self.function(*self.args, **self.kwargs)
+
+
 class CurrencyFreaksClient:
     def __init__(self, api_key):
         self.api_key = api_key
@@ -51,13 +57,10 @@ class CurrencyFreaksClient:
                     print(f"Error: Response code {response.status_code}")
             except requests.exceptions.RequestException as e:
                 print(f"Connection error: {e}")
-            finally:
-                # Re-schedule update
-                self.schedule_rate_update()
         print("Error: currency rates update failed")
 
     def schedule_rate_update(self):
-        timer = threading.Timer(6 * 60 * 60, self.update_rates)
+        timer = RepeatTimer(6 * 60 * 60, self.update_rates)
         timer.daemon = True
         timer.start()
 
