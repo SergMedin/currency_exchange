@@ -46,6 +46,8 @@ class CurrencyFreaksClient:
                 if response.status_code == 200:
                     self.rates = response.json().get("rates", {})
                     self.date = response.json().get("date", None)
+                    # Re-schedule update
+                    self.schedule_rate_update()
                     return
                 else:
                     print(f"Error: Response code {response.status_code}")
