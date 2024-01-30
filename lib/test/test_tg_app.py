@@ -125,7 +125,15 @@ class TestTGAppSM(unittest.TestCase):
 
     def _sm_entrance(self):
         self.tg.emulate_incoming_message(1, "Joe", "Create order")
-        self.assertEqual("Choose the type of order", self.tg.outgoing[-1].text)
+        text = (
+            "Current statistics (to get the full statistics, while being in main menu send '/stat' command"
+            " or press Statistics button):"
+            "\n  * last match price: None"
+            "\n  * best buyer price: No buyers yet"
+            "\n  * best seller price: No sellers yet"
+            "\n\nChoose the type of order"
+        )
+        self.assertEqual(text, self.tg.outgoing[-1].text)
 
     def _sm_type_invalid(self):
         self.tg.emulate_incoming_message(1, "Joe", "Обменяться телами")
