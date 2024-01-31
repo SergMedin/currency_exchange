@@ -11,12 +11,14 @@ class TestTgApp(unittest.TestCase):
     def setUpClass(cls) -> None:
         if os.path.exists("./tg_data/app_db.json"):
             os.remove("./tg_data/app_db.json")
-        # return super().setUpClass()
 
     def setUp(self):
         self.tg = TelegramMock()
         self.db = SqlDb()
         self.app = Application(self.db, self.tg, debug_mode=True)
+
+    def tearDown(self) -> None:
+        self.app._app_db.close()
 
     def test_simple_match(self):
         self.tg.emulate_incoming_message(
@@ -35,9 +37,6 @@ class TestTgApp(unittest.TestCase):
         self.tg.emulate_incoming_message(
             2, "Dow", "/add BUY 1500 RUB * 98.01 AMD min_amt 100 lifetime_h 1"
         )
-        # print('-'*80)
-        # print(self.tg.outgoing)
-        # print('-'*80)
         self.assertEqual(2, len(self.tg.outgoing))
 
     def test_simple_best_price(self):
@@ -53,10 +52,6 @@ class TestTgApp(unittest.TestCase):
         self.tg.emulate_incoming_message(
             100, "Kate", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
         )
-        # print('-'*80)
-        # for e in self.tg.outgoing:
-        #     print(e)
-        # print('-'*80)
         # six messages: four about the added orders, two about the match
         self.assertEqual(6, len(self.tg.outgoing))
         self.assertIn("for 98.1000 per unit", self.tg.outgoing[-1].text)
@@ -96,9 +91,6 @@ class TestTgApp(unittest.TestCase):
         self.assertEqual("Joe", self.tg.outgoing[0].user_name)
         with open("./lib/tg_messages/start_message.md", "r") as f:
             tg_start_message = f.read().strip()
-        print("----")
-        print(self.tg.outgoing[0].text)
-        print("----")
         self.assertEqual(tg_start_message, self.tg.outgoing[0].text)
 
     def test_on_incoming_tg_message_list_command(self):
@@ -145,6 +137,9 @@ class TestTGAppSM(unittest.TestCase):
         self.tg = TelegramMock()
         self.db = SqlDb()
         self.app = Application(self.db, self.tg, debug_mode=True)
+
+    def tearDown(self) -> None:
+        self.app._app_db.close()
 
     def _bot_start(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")

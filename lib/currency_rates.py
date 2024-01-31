@@ -25,6 +25,7 @@ class RepeatTimer(threading.Timer):
             self.function(*self.args, **self.kwargs)
 
 
+# FIXME: replace prints to logging (all code below)
 class CurrencyFreaksClient:
     def __init__(self, api_key):
         self.api_key = api_key
