@@ -14,7 +14,9 @@ class TestCurrencyFreaksClient(unittest.TestCase):
     @patch("currency_rates.requests.get")
     def test_update_rates_success(self, mock_get):
         mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = {"rates": {"RUB": 78.5, "AMD": 520.75}}
+        mock_get.return_value.json.return_value = {
+            "rates": {"RUB": 78.5, "AMD": 520.75}
+        }
         client = CurrencyFreaksClient("API_KEY")
         client.update_rates()
         self.assertEqual(client.get_rate("RUB")["rate"], 78.5)

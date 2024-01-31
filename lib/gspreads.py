@@ -17,7 +17,11 @@ class GSpreadsTable:
         with self.__class__._gapi_lock:
             self.__class__._gapi_credentials_filepath = credentials_filepath
             self.table = self._get_table(table_key)
-            self.sheet = self.table.sheet1 if sheet_title is None else self.table.worksheet(sheet_title)
+            self.sheet = (
+                self.table.sheet1
+                if sheet_title is None
+                else self.table.worksheet(sheet_title)
+            )
 
     def update_cell(self, row: int, col: int, val: str):
         with self.__class__._gapi_lock:
@@ -51,8 +55,13 @@ class GSpreadsTable:
     def _get_table(cls, table_key):
         with cls._gapi_lock:
             if not cls._gapi_client:
-                scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/drive']
-                creds = ServiceAccountCredentials.from_json_keyfile_name(cls._gapi_credentials_filepath, scope)
+                scope = [
+                    "https://spreadsheets.google.com/feeds",
+                    "https://www.googleapis.com/auth/drive",
+                ]
+                creds = ServiceAccountCredentials.from_json_keyfile_name(
+                    cls._gapi_credentials_filepath, scope
+                )
                 cls._gapi_client = gspread.authorize(creds)
             if table_key not in cls._gapi_tables:
                 cls._gapi_tables[table_key] = cls._gapi_client.open_by_key(table_key)
@@ -70,7 +79,7 @@ class _Cell:
 class GSpreadsTableMock:
     def __init__(self):
         self._d: Dict[Tuple[int, int], _Cell] = {}
-        self._sheets: List[str] = ['Sheet1']
+        self._sheets: List[str] = ["Sheet1"]
 
     def update_cell(self, row: int, col: int, val: str):
         assert isinstance(row, int)
@@ -123,7 +132,7 @@ class GSpreadsTableMock:
             return []
         mrow = max(rows)
         res = []
-        for row in range(1, mrow+2):
+        for row in range(1, mrow + 2):
             res.append(self.cell(row, col))
         return res
 

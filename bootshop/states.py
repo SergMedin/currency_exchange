@@ -14,22 +14,37 @@ class SessionState(Enum):
 
 
 class UserSession(Machine):
-    TIMEOUT = 60*60
+    TIMEOUT = 60 * 60
 
     def __init__(self, user_id: int, time_provider=time.time):
         self._user_id = user_id
         self._orders = 0
         self._t = time_provider
         self._mtime = self._t()
-        Machine.__init__(self, states=SessionState, initial='INITIAL')
+        Machine.__init__(self, states=SessionState, initial="INITIAL")
         self.add_transition("hello", SessionState.INITIAL, SessionState.IDLE)
-        self.add_transition("start_order", SessionState.IDLE, SessionState.ORDERING, conditions="can_order")
-        self.add_transition("place_order", SessionState.ORDERING, SessionState.IDLE, after="on_order_placed")
+        self.add_transition(
+            "start_order",
+            SessionState.IDLE,
+            SessionState.ORDERING,
+            conditions="can_order",
+        )
+        self.add_transition(
+            "place_order",
+            SessionState.ORDERING,
+            SessionState.IDLE,
+            after="on_order_placed",
+        )
         self.add_transition("calcel_order", SessionState.IDLE, SessionState.CANCELING)
         self.add_transition("confirm_cancel", SessionState.CANCELING, SessionState.IDLE)
         self.add_transition("delete", "*", SessionState.DELETED)
-        self.add_transition("timeout", [SessionState.ORDERING, SessionState.CANCELING],
-                            SessionState.IDLE, conditions="timeouted", after="on_timeout")
+        self.add_transition(
+            "timeout",
+            [SessionState.ORDERING, SessionState.CANCELING],
+            SessionState.IDLE,
+            conditions="timeouted",
+            after="on_timeout",
+        )
 
     def on_enter_IDLE(self):
         # print("Entering IDLE")
@@ -67,7 +82,6 @@ class OrderDraft(Machine, Order):
 
 
 class T(TestCase):
-
     def test_simple(self):
         us = UserSession(123)
         us.hello()
@@ -83,14 +97,14 @@ class T(TestCase):
         self.assertEqual(us.state, SessionState.DELETED)
 
     def test_temeout(self):
-        d = {'t': 0}
-        us = UserSession(123, time_provider=lambda: d['t'])
+        d = {"t": 0}
+        us = UserSession(123, time_provider=lambda: d["t"])
         us.hello()
         us.start_order()
         self.assertEqual(us.state, SessionState.ORDERING)
-        d['t'] = 60*30
+        d["t"] = 60 * 30
         us.timeout()
         self.assertEqual(us.state, SessionState.ORDERING)
-        d['t'] = 60*60 + 1
+        d["t"] = 60 * 60 + 1
         us.timeout()
         self.assertEqual(us.state, SessionState.IDLE)

@@ -16,11 +16,15 @@ logger = get_logger(__name__)
 class Exchange:
     # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
-    def __init__(self, db: Db, currency_client, on_match=None, zmq_orders_log_endpoint=None):
+    def __init__(
+        self, db: Db, currency_client, on_match=None, zmq_orders_log_endpoint=None
+    ):
         self._db = db
         self._on_match = on_match
         orders = []
-        self._log_q = zmq.Context.instance().socket(zmq.PUB) if zmq_orders_log_endpoint else None
+        self._log_q = (
+            zmq.Context.instance().socket(zmq.PUB) if zmq_orders_log_endpoint else None
+        )
         if self._log_q:
             self._log_q.bind(zmq_orders_log_endpoint)
         self._db.iterate_orders(lambda o: orders.append((o._id, o)))
@@ -62,7 +66,11 @@ class Exchange:
             None
         """
         current_time = time.time()
-        expired_orders = [o for o in self._orders.values() if (current_time - o.creation_time) > o.lifetime_sec]
+        expired_orders = [
+            o
+            for o in self._orders.values()
+            if (current_time - o.creation_time) > o.lifetime_sec
+        ]
         for o in expired_orders:
             self.remove_order(o._id)
 
@@ -78,8 +86,13 @@ class Exchange:
         """
         self.currency_rate = self.currency_converter.get_rate("RUB", "AMD")
         for order in self._orders.values():
-            if order.relative_rate != -1.0 and order.price != self.currency_rate["rate"] * order.relative_rate:
-                order.price = Decimal(self.currency_rate["rate"] * order.relative_rate).quantize(Decimal("0.0001"))
+            if (
+                order.relative_rate != -1.0
+                and order.price != self.currency_rate["rate"] * order.relative_rate
+            ):
+                order.price = Decimal(
+                    self.currency_rate["rate"] * order.relative_rate
+                ).quantize(Decimal("0.0001"))
                 self._db.update_order(order)
 
     def _process_matches(self) -> None:
@@ -128,12 +141,16 @@ class Exchange:
                     if seller.amount_left <= 0:
                         self.remove_order(seller._id)
                     else:
-                        seller.min_op_threshold = min(seller.amount_left, seller.min_op_threshold)
+                        seller.min_op_threshold = min(
+                            seller.amount_left, seller.min_op_threshold
+                        )
 
                     if buyer.amount_left <= 0:
                         self.remove_order(buyer._id)
                     else:
-                        buyer.min_op_threshold = min(buyer.amount_left, buyer.min_op_threshold)
+                        buyer.min_op_threshold = min(
+                            buyer.amount_left, buyer.min_op_threshold
+                        )
 
                     # If the seller's amount_left is less than or equal to 0, move on to the next seller
                     if seller.amount_left <= 0:  # or buyer.amount_left <= 0:
@@ -189,7 +206,9 @@ class Exchange:
             total_amount_buyers = 0
 
         last_match_price_text = "LAST MATCH PRICE:\n" + (
-            f"{self.last_match_price} AMD/RUB" if self.last_match_price else "No matches yet"
+            f"{self.last_match_price} AMD/RUB"
+            if self.last_match_price
+            else "No matches yet"
         )
 
         return {

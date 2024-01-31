@@ -68,7 +68,9 @@ class Validator:
         try:
             price = Decimal(price)
             if price != price.quantize(Decimal("0.0001")):
-                raise ValueError(f"Price has more than four digits after the decimal point: {price}")
+                raise ValueError(
+                    f"Price has more than four digits after the decimal point: {price}"
+                )
             elif price <= 0:
                 raise ValueError("Price cannot be negative or zero")
         except InvalidOperation:
@@ -81,7 +83,9 @@ class Validator:
             if min_op_threshold < 0:
                 raise ValueError("Minimum operational threshold cannot be negative")
             if min_op_threshold > amount:
-                raise ValueError("Minimum operational threshold cannot be greater than the amount")
+                raise ValueError(
+                    "Minimum operational threshold cannot be greater than the amount"
+                )
         except InvalidOperation:
             raise ValueError(f"Invalid value for Decimal: {min_op_threshold}")
 
@@ -91,7 +95,9 @@ class Validator:
         if int(lifetime) < 0:
             raise ValueError("Lifetime cannot be negative")
         if int(lifetime) > (limit_sec // 3600):
-            raise ValueError(f"Lifetime cannot be greater than {limit_sec // 3600} hours")
+            raise ValueError(
+                f"Lifetime cannot be greater than {limit_sec // 3600} hours"
+            )
 
     def validate_remove_command_params(self, params, exchange, user_id):
         if len(params) == 1:
@@ -108,11 +114,21 @@ class Validator:
 
 
 class Application:
-    MAIN_MENU_BUTTONS = [["Create order", "My orders"], ["Statistics", "Help"]]  # TODO: 'История заявок'
+    MAIN_MENU_BUTTONS = [
+        ["Create order", "My orders"],
+        ["Statistics", "Help"],
+    ]  # TODO: 'История заявок'
     # TODO:
     # - add lifetime to orders
 
-    def __init__(self, db: Db, tg: Tg, zmq_orders_log_endpoint=None, log_spreadsheet_key=None, debug_mode=False):
+    def __init__(
+        self,
+        db: Db,
+        tg: Tg,
+        zmq_orders_log_endpoint=None,
+        log_spreadsheet_key=None,
+        debug_mode=False,
+    ):
         self._db = db
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
@@ -126,23 +142,31 @@ class Application:
             currency_client = CurrencyMockClient()
             currency_converter = CurrencyConverter(currency_client)
 
-        self._ex = Exchange(self._db, currency_converter, self._on_match, zmq_orders_log_endpoint)
+        self._ex = Exchange(
+            self._db, currency_converter, self._on_match, zmq_orders_log_endpoint
+        )
         self._sessions = {}
         self._app_db = TinyDB("./tg_data/app_db.json")
 
         if zmq_orders_log_endpoint:
             assert log_spreadsheet_key is not None
             worksheet_title = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
-            self._loger = GSheetsLoger(zmq_orders_log_endpoint, log_spreadsheet_key, worksheet_title)
+            self._loger = GSheetsLoger(
+                zmq_orders_log_endpoint, log_spreadsheet_key, worksheet_title
+            )
             self._loger.start()
         self._validator = Validator()
 
     def shutdown(self):
         self._loger.stop()
 
-    def _send_message(self, user_id, user_name, message, parse_mode=None, reply_markup=None):
+    def _send_message(
+        self, user_id, user_name, message, parse_mode=None, reply_markup=None
+    ):
         self._tg.send_message(
-            TgOutgoingMsg(user_id, user_name, message), parse_mode=parse_mode, reply_markup=reply_markup
+            TgOutgoingMsg(user_id, user_name, message),
+            parse_mode=parse_mode,
+            reply_markup=reply_markup,
         )
 
     def _check_unfinished_session(self, m: TgIncomingMsg):
@@ -184,13 +208,21 @@ class Application:
                 with open("./lib/tg_messages/start_message.md", "r") as f:
                     tg_start_message = f.read().strip()
                 self._send_message(
-                    m.user_id, m.user_name, tg_start_message, parse_mode="Markdown", reply_markup=self.MAIN_MENU_BUTTONS
+                    m.user_id,
+                    m.user_name,
+                    tg_start_message,
+                    parse_mode="Markdown",
+                    reply_markup=self.MAIN_MENU_BUTTONS,
                 )
             elif command == "/help" or m.text == "Help":
                 with open("./lib/tg_messages/help_message.md", "r") as f:
                     tg_help_message = f.read().strip()
                 self._send_message(
-                    m.user_id, m.user_name, tg_help_message, parse_mode="Markdown", reply_markup=self.MAIN_MENU_BUTTONS
+                    m.user_id,
+                    m.user_name,
+                    tg_help_message,
+                    parse_mode="Markdown",
+                    reply_markup=self.MAIN_MENU_BUTTONS,
                 )
             elif command == "/add":
                 self._handle_add_command(m, params)
@@ -231,7 +263,12 @@ class Application:
             min_op_threshold,
             lifetime_sec=lifetime_h * 3600,
         )
-        self._send_message(m.user_id, m.user_name, "We get your order", reply_markup=self.MAIN_MENU_BUTTONS)
+        self._send_message(
+            m.user_id,
+            m.user_name,
+            "We get your order",
+            reply_markup=self.MAIN_MENU_BUTTONS,
+        )
         self._ex.on_new_order(o)
 
     def _prepare_order_creation(self, m: TgIncomingMsg, session=None):
@@ -240,19 +277,29 @@ class Application:
             "order": Order(User(m.user_id, m.user_name), None, None, None, None, None),
         }
         if session:
-            self._sessions[m.user_id]["order_creation_state_machine"].state = session["order_creation_state_machine"]
+            self._sessions[m.user_id]["order_creation_state_machine"].state = session[
+                "order_creation_state_machine"
+            ]
             for key, value in session["order"].items():
                 if key == "user_id" or key == "user_name":
                     continue
                 elif key == "type":
                     self._sessions[m.user_id]["order"].type = OrderType[value]
-                elif key in ["amount_initial", "amount_left", "price", "min_op_threshold", "relative_rate"]:
+                elif key in [
+                    "amount_initial",
+                    "amount_left",
+                    "price",
+                    "min_op_threshold",
+                    "relative_rate",
+                ]:
                     self._sessions[m.user_id]["order"].__setattr__(key, Decimal(value))
                 else:
                     self._sessions[m.user_id]["order"].__setattr__(key, value)
         else:
             self._app_db.insert({"user_id": m.user_id, "user_name": m.user_name})
-            self._app_db.update({"order_creation_state_machine": "start"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "start"}, Query().user_id == m.user_id
+            )
             self._app_db.update({"order": "start"}, Query().user_id == m.user_id)
 
     def _handle_order_creation_sm(self, m: TgIncomingMsg):
@@ -262,7 +309,12 @@ class Application:
             self._sessions[m.user_id]["order"] = None
             del self._sessions[m.user_id]
             self._app_db.remove(Query().user_id == m.user_id)
-            self._send_message(m.user_id, m.user_name, "The order was canceled", reply_markup=reply_markup)
+            self._send_message(
+                m.user_id,
+                m.user_name,
+                "The order was canceled",
+                reply_markup=reply_markup,
+            )
             return
         elif m.text == "/stat":
             self._handle_stat_command(m, statemachine=True)
@@ -277,18 +329,34 @@ class Application:
                 {"order": {"user_id": m.user_id, "user_name": m.user_name}},
                 Query().user_id == m.user_id,
             )
-            self._app_db.update({"order_creation_state_machine": "type"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "type"}, Query().user_id == m.user_id
+            )
         elif state == "type":
             if m.text == "Buy rubles":
                 self._sessions[m.user_id]["order"].type = OrderType.BUY
                 self._app_db.update(
-                    {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "type": "BUY"}},
+                    {
+                        "order": {
+                            **self._app_db.search(Query().user_id == m.user_id)[0][
+                                "order"
+                            ],
+                            "type": "BUY",
+                        }
+                    },
                     Query().user_id == m.user_id,
                 )
             elif m.text == "Sell rubles":
                 self._sessions[m.user_id]["order"].type = OrderType.SELL
                 self._app_db.update(
-                    {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "type": "SELL"}},
+                    {
+                        "order": {
+                            **self._app_db.search(Query().user_id == m.user_id)[0][
+                                "order"
+                            ],
+                            "type": "SELL",
+                        }
+                    },
                     Query().user_id == m.user_id,
                 )
             else:
@@ -296,7 +364,9 @@ class Application:
             # self._sessions[m.user_id]["order_creation_state_machine"].set_type()
             self._sessions[m.user_id]["order_creation_state_machine"].set_type_rubamd()
             # self._app_db.update({"order_creation_state_machine": "currency_from"}, Query().user_id == m.user_id)
-            self._app_db.update({"order_creation_state_machine": "amount"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "amount"}, Query().user_id == m.user_id
+            )
             # text = "Выберите исходную валюту"
             # reply_markup = [["RUB"]]
             text = "Enter the amount to exchange (RUB)"
@@ -304,12 +374,22 @@ class Application:
         elif state == "currency_from":  # Currently not used
             self._validator.validate_currency_from(m.text)
             self._sessions[m.user_id]["order"].currency_from = m.text
-            self._sessions[m.user_id]["order_creation_state_machine"].set_currency_from()
+            self._sessions[m.user_id][
+                "order_creation_state_machine"
+            ].set_currency_from()
             self._app_db.update(
-                {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "currency_from": m.text}},
+                {
+                    "order": {
+                        **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                        "currency_from": m.text,
+                    }
+                },
                 Query().user_id == m.user_id,
             )
-            self._app_db.update({"order_creation_state_machine": "currency_to"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "currency_to"},
+                Query().user_id == m.user_id,
+            )
             text = "Выберите целевую валюту"
             reply_markup = [["AMD"]]
         elif state == "currency_to":  # Currently not used
@@ -317,10 +397,17 @@ class Application:
             self._sessions[m.user_id]["order"].currency_to = m.text
             self._sessions[m.user_id]["order_creation_state_machine"].set_currency_to()
             self._app_db.update(
-                {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "currency_to": m.text}},
+                {
+                    "order": {
+                        **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                        "currency_to": m.text,
+                    }
+                },
                 Query().user_id == m.user_id,
             )
-            self._app_db.update({"order_creation_state_machine": "amount"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "amount"}, Query().user_id == m.user_id
+            )
             text = "Enter the amount to exchange (RUB)"
             reply_markup = None
         elif state == "amount":
@@ -328,10 +415,18 @@ class Application:
             self._sessions[m.user_id]["order"].amount_initial = Decimal(m.text)
             self._sessions[m.user_id]["order_creation_state_machine"].set_amount()
             self._app_db.update(
-                {"order": {**self._app_db.search(Query().user_id == m.user_id)[0]["order"], "amount_initial": m.text}},
+                {
+                    "order": {
+                        **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                        "amount_initial": m.text,
+                    }
+                },
                 Query().user_id == m.user_id,
             )
-            self._app_db.update({"order_creation_state_machine": "type_price"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "type_price"},
+                Query().user_id == m.user_id,
+            )
             text = "Choose the type of rate"
             reply_markup = [["Absolute", "Relative to the exchange"]]
         elif state == "type_price":
@@ -344,7 +439,9 @@ class Application:
                 self._app_db.update(
                     {
                         "order": {
-                            **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                            **self._app_db.search(Query().user_id == m.user_id)[0][
+                                "order"
+                            ],
                             "type_price": "Absolute",
                         }
                     },  # FIXME
@@ -357,7 +454,9 @@ class Application:
                 self._app_db.update(
                     {
                         "order": {
-                            **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
+                            **self._app_db.search(Query().user_id == m.user_id)[0][
+                                "order"
+                            ],
                             "type_price": "Relative",
                         }
                     },
@@ -372,7 +471,9 @@ class Application:
                 raise ValueError(f"Invalid type_price: {m.text}")
 
             self._sessions[m.user_id]["order_creation_state_machine"].set_type_price()
-            self._app_db.update({"order_creation_state_machine": "price"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "price"}, Query().user_id == m.user_id
+            )
             reply_markup = None
         elif state == "price":
             self._validator.validate_price(m.text)
@@ -383,13 +484,17 @@ class Application:
                 ).quantize(Decimal("0.0001"))
                 self._sessions[m.user_id]["order"].relative_rate = Decimal(m.text)
                 print("We are in relative rate")
-                print("Relative rate: ", self._sessions[m.user_id]["order"].relative_rate)
+                print(
+                    "Relative rate: ", self._sessions[m.user_id]["order"].relative_rate
+                )
                 print("Price: ", self._sessions[m.user_id]["order"].price)
             else:
                 # absolute rate
                 self._sessions[m.user_id]["order"].price = Decimal(m.text)
                 print("We are in abs price")
-                print("Relative rate: ", self._sessions[m.user_id]["order"].relative_rate)
+                print(
+                    "Relative rate: ", self._sessions[m.user_id]["order"].relative_rate
+                )
                 print("Price: ", self._sessions[m.user_id]["order"].price)
 
             self._sessions[m.user_id]["order_creation_state_machine"].set_price()
@@ -406,18 +511,27 @@ class Application:
                 {
                     "order": {
                         **self._app_db.search(Query().user_id == m.user_id)[0]["order"],
-                        "relative_rate": str(self._sessions[m.user_id]["order"].relative_rate),
+                        "relative_rate": str(
+                            self._sessions[m.user_id]["order"].relative_rate
+                        ),
                     }
                 },
                 Query().user_id == m.user_id,
             )
-            self._app_db.update({"order_creation_state_machine": "min_op_threshold"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "min_op_threshold"},
+                Query().user_id == m.user_id,
+            )
             text = "Enter the minimum operational threshold in RUB"
             reply_markup = None
         elif state == "min_op_threshold":
-            self._validator.validate_min_op_threshold(m.text, self._sessions[m.user_id]["order"].amount_initial)
+            self._validator.validate_min_op_threshold(
+                m.text, self._sessions[m.user_id]["order"].amount_initial
+            )
             self._sessions[m.user_id]["order"].min_op_threshold = Decimal(m.text)
-            self._sessions[m.user_id]["order_creation_state_machine"].set_min_op_threshold()
+            self._sessions[m.user_id][
+                "order_creation_state_machine"
+            ].set_min_op_threshold()
             self._app_db.update(
                 {
                     "order": {
@@ -427,7 +541,10 @@ class Application:
                 },
                 Query().user_id == m.user_id,
             )
-            self._app_db.update({"order_creation_state_machine": "lifetime"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "lifetime"},
+                Query().user_id == m.user_id,
+            )
             text = "Enter the lifetime of the order in hours"
             reply_markup = None
         elif state == "lifetime":
@@ -446,10 +563,15 @@ class Application:
                 },
                 Query().user_id == m.user_id,
             )
-            self._app_db.update({"order_creation_state_machine": "confirm"}, Query().user_id == m.user_id)
+            self._app_db.update(
+                {"order_creation_state_machine": "confirm"},
+                Query().user_id == m.user_id,
+            )
             text_about_rate = ""
             if self._sessions[m.user_id]["order"].relative_rate == -1.0:
-                text_about_rate = f"price: {self._sessions[m.user_id]['order'].price} AMD/RUB"
+                text_about_rate = (
+                    f"price: {self._sessions[m.user_id]['order'].price} AMD/RUB"
+                )
             else:
                 text_about_rate = (
                     f"price: {self._sessions[m.user_id]['order'].relative_rate} RELATIVE "
@@ -466,7 +588,9 @@ class Application:
             reply_markup = [["Confirm"]]  # , ["Cancel"]]
         elif state == "confirm":
             if m.text == "Confirm":
-                self._sessions[m.user_id]["order"].amount_left = self._sessions[m.user_id]["order"].amount_initial
+                self._sessions[m.user_id]["order"].amount_left = self._sessions[
+                    m.user_id
+                ]["order"].amount_initial
                 self._ex.on_new_order(self._sessions[m.user_id]["order"])
                 text = "The order was created"
             elif m.text == "Cancel":
@@ -491,7 +615,10 @@ class Application:
         orders = self._ex.list_orders_for_user(User(m.user_id, m.user_name))
         if not orders:
             self._send_message(
-                m.user_id, m.user_name, "You don't have any active orders", reply_markup=self.MAIN_MENU_BUTTONS
+                m.user_id,
+                m.user_name,
+                "You don't have any active orders",
+                reply_markup=self.MAIN_MENU_BUTTONS,
             )
         else:
             text = "Your orders:\n"
@@ -499,7 +626,9 @@ class Application:
                 if o.relative_rate == -1.0:
                     text_about_rate = f"{o.price} AMD"
                 else:
-                    text_about_rate = f"{o.relative_rate} RELATIVE (current value: {o.price} AMD)"
+                    text_about_rate = (
+                        f"{o.relative_rate} RELATIVE (current value: {o.price} AMD)"
+                    )
 
                 text += (
                     "\n"
@@ -509,17 +638,23 @@ class Application:
                 )
 
             text += "\n\nto remove an order, use /remove <id>"
-            self._send_message(m.user_id, m.user_name, text, reply_markup=self.MAIN_MENU_BUTTONS)
+            self._send_message(
+                m.user_id, m.user_name, text, reply_markup=self.MAIN_MENU_BUTTONS
+            )
 
     def _handle_remove_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_remove_command_params(params, self._ex, m.user_id)
         remove_order_id = int(params[0])
         self._ex.remove_order(remove_order_id)
-        self._send_message(m.user_id, m.user_name, f"Order with id {remove_order_id} was removed")
+        self._send_message(
+            m.user_id, m.user_name, f"Order with id {remove_order_id} was removed"
+        )
 
     @staticmethod
     def _convert_to_utc(creation_time, lifetime_sec):
-        return datetime.datetime.fromtimestamp(creation_time + lifetime_sec, datetime.UTC)
+        return datetime.datetime.fromtimestamp(
+            creation_time + lifetime_sec, datetime.UTC
+        )
 
     def _on_match(self, m: Match):
         buyer_id = m.buy_order.user.id

@@ -115,6 +115,7 @@ class Dispatcher:
 
 
 if __name__ == "__main__":
+
     class MainState(Enum):
         IDLE = 1
         ORDERING = 2
@@ -132,12 +133,17 @@ if __name__ == "__main__":
     class MainController(Controller):
         class AboutController(ScreenController):
             def __init__(self):
-                ScreenController.__init__(self, text=("В [Название магазина] мы объединяем нашу любовь к аргентинскому "
-                                                      "танго с эксклюзивной коллекцией одежды, созданной, чтобы вы "
-                                                      "чувствовали себя неотразимо на танцполе. Наша одежда - это не "
-                                                      "просто костюмы, это произведения искусства, которые позволяют "
-                                                      "танцорам выразить себя в каждом движении."),
-                                          buttons=[Button("Понятно", "ok")])
+                ScreenController.__init__(
+                    self,
+                    text=(
+                        "В [Название магазина] мы объединяем нашу любовь к аргентинскому "
+                        "танго с эксклюзивной коллекцией одежды, созданной, чтобы вы "
+                        "чувствовали себя неотразимо на танцполе. Наша одежда - это не "
+                        "просто костюмы, это произведения искусства, которые позволяют "
+                        "танцорам выразить себя в каждом движении."
+                    ),
+                    buttons=[Button("Понятно", "ok")],
+                )
 
             def process_event(self, s: StoryState, e: Event):
                 ScreenController.process_event(self, s, e)
@@ -154,7 +160,7 @@ if __name__ == "__main__":
             Controller.__init__(self, initial_state=MainState.IDLE)
             self.subcontrollers[MainState.IDLE] = ScreenController(
                 text="Привет! Это магазин обуви. Чего желаете?",
-                buttons=[Button("Заказать", "order"), Button("О магазине", "about")]
+                buttons=[Button("Заказать", "order"), Button("О магазине", "about")],
             )
             self.subcontrollers[MainState.ORDERING] = OrderingController()
             self.subcontrollers[MainState.ABOUT] = MainController.AboutController()
@@ -172,9 +178,21 @@ if __name__ == "__main__":
     class OrderingController(Controller):
         class SizeController(ScreenController):
             def __init__(self):
-                ScreenController.__init__(self, text="Выберите размер:",
-                                          buttons=[Button("34"), Button("35"), Button("36"), Button("37"), Button("38"),
-                                                   Button("39"), Button("40"), Button("Другой"), Button("Отмена")])
+                ScreenController.__init__(
+                    self,
+                    text="Выберите размер:",
+                    buttons=[
+                        Button("34"),
+                        Button("35"),
+                        Button("36"),
+                        Button("37"),
+                        Button("38"),
+                        Button("39"),
+                        Button("40"),
+                        Button("Другой"),
+                        Button("Отмена"),
+                    ],
+                )
 
             def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
@@ -191,9 +209,20 @@ if __name__ == "__main__":
 
         class KablukController(ScreenController):
             def __init__(self):
-                ScreenController.__init__(self, text="Выберите каблук:",
-                                          buttons=[Button("3"), Button("9"), Button("10"), Button("85"), Button("105"),
-                                                   Button("Другой"), Button("Назад"), Button("Отмена")])
+                ScreenController.__init__(
+                    self,
+                    text="Выберите каблук:",
+                    buttons=[
+                        Button("3"),
+                        Button("9"),
+                        Button("10"),
+                        Button("85"),
+                        Button("105"),
+                        Button("Другой"),
+                        Button("Назад"),
+                        Button("Отмена"),
+                    ],
+                )
 
             def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
@@ -212,9 +241,19 @@ if __name__ == "__main__":
 
         class PyatkaController(ScreenController):
             def __init__(self):
-                ScreenController.__init__(self, text="Выберите пятку:",
-                                          buttons=[Button("3"), Button("5"), Button("7"), Button("9"), Button("Другой"),
-                                                   Button("Назад"), Button("Отмена")])
+                ScreenController.__init__(
+                    self,
+                    text="Выберите пятку:",
+                    buttons=[
+                        Button("3"),
+                        Button("5"),
+                        Button("7"),
+                        Button("9"),
+                        Button("Другой"),
+                        Button("Назад"),
+                        Button("Отмена"),
+                    ],
+                )
 
             def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
@@ -233,9 +272,18 @@ if __name__ == "__main__":
 
         class ColorController(ScreenController):
             def __init__(self):
-                ScreenController.__init__(self, text="Выберите цвет:",
-                                          buttons=[Button("Черный"), Button("Бежевый"), Button("Белый"), Button("Другой"),
-                                                   Button("Назад"), Button("Отмена")])
+                ScreenController.__init__(
+                    self,
+                    text="Выберите цвет:",
+                    buttons=[
+                        Button("Черный"),
+                        Button("Бежевый"),
+                        Button("Белый"),
+                        Button("Другой"),
+                        Button("Назад"),
+                        Button("Отмена"),
+                    ],
+                )
 
             def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
@@ -254,8 +302,15 @@ if __name__ == "__main__":
 
         class ConfirmController(ScreenController):
             def __init__(self):
-                ScreenController.__init__(self, text="Подтвердите заказ:",
-                                          buttons=[Button("Да, разместить заказ"), Button("Назад"), Button("Отмена")])
+                ScreenController.__init__(
+                    self,
+                    text="Подтвердите заказ:",
+                    buttons=[
+                        Button("Да, разместить заказ"),
+                        Button("Назад"),
+                        Button("Отмена"),
+                    ],
+                )
 
             def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
@@ -270,8 +325,11 @@ if __name__ == "__main__":
 
         class EnterOtherController(ScreenController):
             def __init__(self):
-                ScreenController.__init__(self, text="Введите значение:",
-                                          buttons=[Button("Назад"), Button("Отмена")])
+                ScreenController.__init__(
+                    self,
+                    text="Введите значение:",
+                    buttons=[Button("Назад"), Button("Отмена")],
+                )
 
             def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
@@ -286,8 +344,11 @@ if __name__ == "__main__":
 
         class ConfirmCancelingController(ScreenController):
             def __init__(self):
-                ScreenController.__init__(self, text="Хотите прервать заказ?",
-                                          buttons=[Button("Да"), Button("Нет")])
+                ScreenController.__init__(
+                    self,
+                    text="Хотите прервать заказ?",
+                    buttons=[Button("Да"), Button("Нет")],
+                )
 
             def process_event(self, s: StoryState, e: Event):
                 if isinstance(e, Action):
@@ -302,13 +363,27 @@ if __name__ == "__main__":
 
         def __init__(self):
             Controller.__init__(self, initial_state=OrderingState.SIZE)
-            self.subcontrollers[OrderingState.SIZE] = OrderingController.SizeController()
-            self.subcontrollers[OrderingState.KABLUK] = OrderingController.KablukController()
-            self.subcontrollers[OrderingState.PYATKA] = OrderingController.PyatkaController()
-            self.subcontrollers[OrderingState.COLOR] = OrderingController.ColorController()
-            self.subcontrollers[OrderingState.CONFIRM] = OrderingController.ConfirmController()
-            self.subcontrollers[OrderingState.ENTER_OTHER] = OrderingController.EnterOtherController()
-            self.subcontrollers[OrderingState.CONFIRM_CANCELING] = OrderingController.ConfirmCancelingController()
+            self.subcontrollers[OrderingState.SIZE] = (
+                OrderingController.SizeController()
+            )
+            self.subcontrollers[OrderingState.KABLUK] = (
+                OrderingController.KablukController()
+            )
+            self.subcontrollers[OrderingState.PYATKA] = (
+                OrderingController.PyatkaController()
+            )
+            self.subcontrollers[OrderingState.COLOR] = (
+                OrderingController.ColorController()
+            )
+            self.subcontrollers[OrderingState.CONFIRM] = (
+                OrderingController.ConfirmController()
+            )
+            self.subcontrollers[OrderingState.ENTER_OTHER] = (
+                OrderingController.EnterOtherController()
+            )
+            self.subcontrollers[OrderingState.CONFIRM_CANCELING] = (
+                OrderingController.ConfirmCancelingController()
+            )
 
     root = MainController()
 

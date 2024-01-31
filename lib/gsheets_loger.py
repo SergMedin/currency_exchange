@@ -21,12 +21,16 @@ class GSheetsLoger:
         self._stop_flag = False
         self._sub_sock = zmq.Context.instance().socket(zmq.SUB)
         self._sub_sock.connect(zmq_endpoint)
-        self._sub_sock.setsockopt(zmq.SUBSCRIBE, b'')
+        self._sub_sock.setsockopt(zmq.SUBSCRIBE, b"")
         self._thread: threading.Thread = None
         if spreadsheet_key:
-            credentials_filepath = os.getenv("GCLOUD_ACC_CREDENTIALS_FILE", "useful-mile-334600-ce60f5954ea9.json")
+            credentials_filepath = os.getenv(
+                "GCLOUD_ACC_CREDENTIALS_FILE", "useful-mile-334600-ce60f5954ea9.json"
+            )
             logging.info("Using GSpreadsTable")
-            self._gst = GSpreadsTable(credentials_filepath, spreadsheet_key, sheet_title)
+            self._gst = GSpreadsTable(
+                credentials_filepath, spreadsheet_key, sheet_title
+            )
         else:
             logging.info("Using GSpreadsTableMock")
             self._gst = GSpreadsTableMock()
@@ -59,7 +63,9 @@ class GSheetsLoger:
             o.user.id,
             o.user.name,
             o.type.name,
-            float(o.price),  # FIXME: learn the right way to make correct decimal values in Google Sheets
+            float(
+                o.price
+            ),  # FIXME: learn the right way to make correct decimal values in Google Sheets
             float(o.amount_initial),
             float(o.amount_left),
             float(o.min_op_threshold),
@@ -111,7 +117,9 @@ class T(unittest.TestCase):
 
     def test_simple(self):
         log = GSheetsLoger("inproc://test")
-        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48*60*60)
+        o = Order(
+            User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+        )
         op = Operation(OperationType.NEW_ORDER, o)
         log._add_record(op)
         t = log._gst
@@ -128,7 +136,9 @@ class T(unittest.TestCase):
         log._curr_row = None
         log._check_and_setup_sheet()
 
-        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48*60*60)
+        o = Order(
+            User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+        )
         op = Operation(OperationType.NEW_ORDER, o)
         log._add_record(op)
         t = log._gst
