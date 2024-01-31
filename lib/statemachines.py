@@ -37,4 +37,4 @@ class OrderCreation:
         self.machine.add_transition("set_type_rubamd", "type", "amount")
 
     def after_state_change(self):
-        print(f"State changed to {self.state}")  # FIXME: change to logging
+        pass  # FIXME: change to logging

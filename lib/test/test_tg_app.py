@@ -27,9 +27,6 @@ class TestTgApp(unittest.TestCase):
     def test_simple_no_match(self):
         self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1")
         self.tg.emulate_incoming_message(2, "Dow", "/add BUY 1500 RUB * 98.01 AMD min_amt 100 lifetime_h 1")
-        # print('-'*80)
-        # print(self.tg.outgoing)
-        # print('-'*80)
         self.assertEqual(2, len(self.tg.outgoing))
 
     def test_simple_best_price(self):
@@ -37,10 +34,6 @@ class TestTgApp(unittest.TestCase):
         self.tg.emulate_incoming_message(2, "Dow", "/add SELL 1500 RUB * 100 AMD min_amt 100 lifetime_h 1")
         self.tg.emulate_incoming_message(3, "KarlMax", "/add SELL 1500 RUB * 110 AMD min_amt 100 lifetime_h 1")
         self.tg.emulate_incoming_message(100, "Kate", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1")
-        # print('-'*80)
-        # for e in self.tg.outgoing:
-        #     print(e)
-        # print('-'*80)
         # six messages: four about the added orders, two about the match
         self.assertEqual(6, len(self.tg.outgoing))
         self.assertIn("for 98.1000 per unit", self.tg.outgoing[-1].text)
@@ -72,9 +65,6 @@ class TestTgApp(unittest.TestCase):
         self.assertEqual("Joe", self.tg.outgoing[0].user_name)
         with open("./lib/tg_messages/start_message.md", "r") as f:
             tg_start_message = f.read().strip()
-        print("----")
-        print(self.tg.outgoing[0].text)
-        print("----")
         self.assertEqual(tg_start_message, self.tg.outgoing[0].text)
 
     def test_on_incoming_tg_message_list_command(self):

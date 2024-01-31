@@ -37,9 +37,6 @@ class Validator:
         self.validate_min_op_threshold(params[7], params[1])
         if params[8] != "lifetime_h":
             raise ValueError(f"Invalid separator: {params[8]}")
-        print("-" * 100)
-        print("We are in validate_add_command_params")
-        print("-" * 100)
         self.validate_lifetime(params[9])
 
     def validate_order_type(self, order_type: str):
@@ -382,15 +379,9 @@ class Application:
                     Decimal(m.text) * self._ex.currency_rate["rate"]
                 ).quantize(Decimal("0.0001"))
                 self._sessions[m.user_id]["order"].relative_rate = Decimal(m.text)
-                print("We are in relative rate")
-                print("Relative rate: ", self._sessions[m.user_id]["order"].relative_rate)
-                print("Price: ", self._sessions[m.user_id]["order"].price)
             else:
                 # absolute rate
                 self._sessions[m.user_id]["order"].price = Decimal(m.text)
-                print("We are in abs price")
-                print("Relative rate: ", self._sessions[m.user_id]["order"].relative_rate)
-                print("Price: ", self._sessions[m.user_id]["order"].price)
 
             self._sessions[m.user_id]["order_creation_state_machine"].set_price()
             self._app_db.update(
@@ -431,9 +422,6 @@ class Application:
             text = "Enter the lifetime of the order in hours"
             reply_markup = None
         elif state == "lifetime":
-            # print("-" * 100)
-            # print("We are in lifetime")
-            # print("-" * 100)
             self._validator.validate_lifetime(m.text)
             self._sessions[m.user_id]["order"].lifetime_sec = int(m.text) * 3600
             self._sessions[m.user_id]["order_creation_state_machine"].set_lifetime()
