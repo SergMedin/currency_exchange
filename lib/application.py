@@ -206,10 +206,14 @@ class Application:
         except ValueError as e:
             self._send_message(m.user_id, m.user_name, f"Error: {str(e)}")
 
-    def _handle_stat_command(self, m: TgIncomingMsg):
+    def _handle_stat_command(self, m: TgIncomingMsg, statemachine: bool = False):
         self._ex._check_order_lifetime()
         text = self._ex.get_stats()["text"]
-        self._send_message(m.user_id, m.user_name, text, reply_markup=self.MAIN_MENU_BUTTONS)
+        if statemachine:
+            reply_markup = [["Cancel"]]
+        else:
+            reply_markup = self.MAIN_MENU_BUTTONS
+        self._send_message(m.user_id, m.user_name, text, reply_markup=reply_markup)
 
     def _handle_add_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_add_command_params(params)
@@ -252,9 +256,21 @@ class Application:
             self._app_db.update({"order": "start"}, Query().user_id == m.user_id)
 
     def _handle_order_creation_sm(self, m: TgIncomingMsg):
+        if m.text == "Cancel":
+            reply_markup = self.MAIN_MENU_BUTTONS
+            self._sessions[m.user_id]["order_creation_state_machine"] = None
+            self._sessions[m.user_id]["order"] = None
+            del self._sessions[m.user_id]
+            self._app_db.remove(Query().user_id == m.user_id)
+            self._send_message(m.user_id, m.user_name, "The order was canceled", reply_markup=reply_markup)
+            return
+        elif m.text == "/stat":
+            self._handle_stat_command(m, statemachine=True)
+            return
         state = self._sessions[m.user_id]["order_creation_state_machine"].state
         if state == "start":
-            text = "Choose the type of order"
+            text = self._ex.get_stats()["short_text"]
+            text += "\n\nChoose the type of order"
             reply_markup = [["Buy rubles", "Sell rubles"]]
             self._sessions[m.user_id]["order_creation_state_machine"].new_order()
             self._app_db.update(
@@ -415,9 +431,9 @@ class Application:
             text = "Enter the lifetime of the order in hours"
             reply_markup = None
         elif state == "lifetime":
-            print("-" * 100)
-            print("We are in lifetime")
-            print("-" * 100)
+            # print("-" * 100)
+            # print("We are in lifetime")
+            # print("-" * 100)
             self._validator.validate_lifetime(m.text)
             self._sessions[m.user_id]["order"].lifetime_sec = int(m.text) * 3600
             self._sessions[m.user_id]["order_creation_state_machine"].set_lifetime()
@@ -447,7 +463,7 @@ class Application:
                 f"\n\tmin_op_threshold: {self._sessions[m.user_id]['order'].min_op_threshold} RUB"
                 f"\n\tlifetime: {self._sessions[m.user_id]['order'].lifetime_sec // 3600} hours"
             )
-            reply_markup = [["Confirm"], ["Cancel"]]
+            reply_markup = [["Confirm"]]  # , ["Cancel"]]
         elif state == "confirm":
             if m.text == "Confirm":
                 self._sessions[m.user_id]["order"].amount_left = self._sessions[m.user_id]["order"].amount_initial
@@ -463,6 +479,12 @@ class Application:
             del self._sessions[m.user_id]
             self._app_db.remove(Query().user_id == m.user_id)
 
+        if reply_markup == self.MAIN_MENU_BUTTONS:
+            pass
+        elif reply_markup:
+            reply_markup += [["Cancel"]]
+        else:
+            reply_markup = [["Cancel"]]
         self._send_message(m.user_id, m.user_name, text, reply_markup=reply_markup)
 
     def _handle_list_command(self, m: TgIncomingMsg):

@@ -217,6 +217,13 @@ class Exchange:
                 f"{total_amount_sellers if total_amount_sellers < 1_000_000 else '1M+'} RUB\n"
                 f"{min_seller_text}"
             ),
+            "short_text": (
+                f"Current statistics (to get the full statistics, while being in main menu"
+                " send '/stat' command or press Statistics button):\n"
+                f"  * last match price: {self.last_match_price}\n"
+                f"  * best buyer price: {max_buyer_price if buyers else 'No buyers yet'}\n"
+                f"  * best seller price: {min_seller_price if sellers else 'No sellers yet'}"
+            ),
         }
 
     def _log(self, operation: str, order: data.Order) -> None:
