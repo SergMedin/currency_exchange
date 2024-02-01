@@ -1,4 +1,4 @@
-from .config import ORDER_LIFETIME_LIMIT
+from typing import List, Tuple
 import time
 import dataclasses
 import unittest
@@ -6,6 +6,7 @@ import zmq
 import pickle
 from decimal import Decimal
 from .db import Db
+from .config import ORDER_LIFETIME_LIMIT
 from . import data
 
 from .logger import get_logger
@@ -21,13 +22,19 @@ class Exchange:
     ):
         self._db = db
         self._on_match = on_match
-        orders = []
+        orders: List[Tuple[int, data.Order]] = []
         self._log_q = (
             zmq.Context.instance().socket(zmq.PUB) if zmq_orders_log_endpoint else None
         )
         if self._log_q:
             self._log_q.bind(zmq_orders_log_endpoint)
-        self._db.iterate_orders(lambda o: orders.append((o._id, o)))
+
+        def add(o: data.Order):
+            if o._id is None:
+                raise ValueError("Order ID is None")
+            orders.append((o._id, o))
+
+        self._db.iterate_orders(add)
         self._orders: dict[int, data.Order] = dict(orders)
         self.last_match_price = self._db.get_last_match_price()
 
@@ -47,6 +54,8 @@ class Exchange:
             raise ValueError("Order lifetime cannot exceed 48 hours")
 
         o = self._db.store_order(o)
+        if o._id is None:
+            raise ValueError("Order ID is None")
         self._log("new", o)
         self._orders[o._id] = o
         self._check_order_lifetime()  # Removing expired orders
@@ -72,6 +81,8 @@ class Exchange:
             if (current_time - o.creation_time) > o.lifetime_sec
         ]
         for o in expired_orders:
+            if o._id is None:
+                continue
             self.remove_order(o._id)
 
     def _update_prices(self) -> None:
@@ -139,6 +150,7 @@ class Exchange:
 
                     # Remove order if amount_left is less than or equal to 0
                     if seller.amount_left <= 0:
+                        assert seller._id is not None
                         self.remove_order(seller._id)
                     else:
                         seller.min_op_threshold = min(
@@ -146,6 +158,7 @@ class Exchange:
                         )
 
                     if buyer.amount_left <= 0:
+                        assert buyer._id is not None
                         self.remove_order(buyer._id)
                     else:
                         buyer.min_op_threshold = min(

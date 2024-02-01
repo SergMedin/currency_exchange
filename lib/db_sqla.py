@@ -70,7 +70,7 @@ class SqlDb(Db):
             session.add(last_match_price)
             session.commit()
 
-    def get_last_match_price(self) -> Decimal:
+    def get_last_match_price(self) -> Decimal | None:
         with Session(self._eng) as session:
             last_match_price = session.query(_DbLastMatchPrice).one_or_none()
             if last_match_price is None:
@@ -114,8 +114,8 @@ _ValueConvertFunctionType = Callable[
 class _Field:
     do_name: str
     db_name: str
-    do2db: _ValueConvertFunctionType = None
-    db2do: _ValueConvertFunctionType = None
+    do2db: _ValueConvertFunctionType | None = None
+    db2do: _ValueConvertFunctionType | None = None
     is_id: bool = False
 
 

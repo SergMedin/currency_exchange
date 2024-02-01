@@ -1,4 +1,4 @@
-import requests
+import requests  # type: ignore
 import threading
 import logging
 from dotenv import load_dotenv

@@ -1,6 +1,6 @@
 import threading
 import unittest
-from typing import Any, Tuple, Dict, List
+from typing import Any, Tuple, Dict, List, Optional
 import dataclasses
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -10,9 +10,11 @@ class GSpreadsTable:
     _gapi_lock = threading.RLock()
     _gapi_client = None
     _gapi_tables: dict[str, Any] = {}
-    _gapi_credentials_filepath: str = None
+    _gapi_credentials_filepath: Optional[str] = None
 
-    def __init__(self, credentials_filepath, table_key, sheet_title: str = None):
+    def __init__(
+        self, credentials_filepath, table_key, sheet_title: Optional[str] = None
+    ):
         # assert sheet_title is not None  # Andrey asked to remove this assert
         with self.__class__._gapi_lock:
             self.__class__._gapi_credentials_filepath = credentials_filepath
@@ -78,8 +80,8 @@ class _Cell:
 
 class GSpreadsTableMock:
     def __init__(self):
-        self._d: Dict[Tuple[int, int], _Cell] = {}
-        self._sheets: List[str] = ["Sheet1"]
+        self._d: Dict[Tuple[int, int], _Cell] = {}  # type: ignore
+        self._sheets: List[str] = ["Sheet1"]  # type: ignore
 
     def update_cell(self, row: int, col: int, val: str):
         assert isinstance(row, int)
@@ -138,7 +140,6 @@ class GSpreadsTableMock:
 
 
 class TestGspreadMock(unittest.TestCase):
-
     def test_simple(self):
         m = GSpreadsTableMock()
         m.update("A1", [["sell", "cow", "2"]])

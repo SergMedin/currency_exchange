@@ -74,13 +74,6 @@ class UserSession(Machine):
         return self.active_orders_count <= 0
 
 
-class OrderDraft(Machine, Order):
-    states = []
-
-    def __init__(self):
-        Machine.__init__(self, OrderDraft.states)
-
-
 class T(TestCase):
     def test_simple(self):
         us = UserSession(123)

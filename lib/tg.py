@@ -1,6 +1,7 @@
 from typing import Callable
 import asyncio
 import dataclasses
+import logging
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 from telegram import InlineKeyboardButton, ReplyKeyboardMarkup
@@ -16,7 +17,7 @@ class TgIncomingMsg:
 @dataclasses.dataclass
 class TgOutgoingMsg:
     user_id: int
-    user_name: str
+    user_name: str | None
     text: str
 
 
@@ -39,8 +40,8 @@ class Tg:
 class TelegramMock(Tg):
     def __init__(self):
         super().__init__()
-        self.outgoing: list[TgOutgoingMsg] = []
-        self.incoming: list[TgIncomingMsg] = []
+        self.outgoing: list[TgOutgoingMsg] = []  # type: ignore
+        self.incoming: list[TgIncomingMsg] = []  # type: ignore
 
     def send_message(self, m: TgOutgoingMsg, parse_mode=None, reply_markup=None):
         if not isinstance(m, TgOutgoingMsg):
@@ -52,7 +53,7 @@ class TelegramMock(Tg):
     ):
         m = TgIncomingMsg(from_user_id, from_user_name, text)
         self.incoming.append(m)
-        if self.on_message:
+        if self.on_message is not None:
             self.on_message(m)
 
 
@@ -70,6 +71,14 @@ class TelegramReal(Tg):
     async def _default_handler(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
+        if (
+            update.effective_chat is None
+            or update.effective_chat.username is None
+            or update.message is None
+            or update.message.text is None
+        ):
+            logging.warning(f"got invalid message. Update: {update}")
+            return
         message = TgIncomingMsg(
             update.effective_chat.id,
             update.effective_chat.username,

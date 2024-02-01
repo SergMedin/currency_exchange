@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-import requests
+import requests  # type: ignore
 from ..currency_rates import CurrencyFreaksClient
 import sys
 import os

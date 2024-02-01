@@ -25,6 +25,14 @@ class TgReal2(Tg):
     async def _default_handler(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
+        if (
+            update.effective_chat is None
+            or update.effective_chat.username is None
+            or update.message is None
+            or update.message.text is None
+        ):
+            logging.warning(f"got invalid message. Update: {update}")
+            return
         message = TgIncomingMsg(
             update.effective_chat.id,
             update.effective_chat.username,
@@ -40,6 +48,9 @@ class TgReal2(Tg):
     ) -> None:
         logging.info(f"got callback query. Update: {update}")
         query = update.callback_query
+        if query is None:
+            logging.warning(f"got invalid callback query. Update: {update}")
+            return
         # CallbackQueries need to be answered, even if no notification to the user is needed
         # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
         await query.answer()

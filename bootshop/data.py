@@ -14,8 +14,8 @@ class OrderState(enum.StrEnum):
 @dataclasses.dataclass
 class Order:
     state: OrderState = OrderState.DRAFT
-    id: int = None
-    price: Decimal = None
+    id: int | None = None
+    price: Decimal | None = None
 
 
 class T(unittest.TestCase):

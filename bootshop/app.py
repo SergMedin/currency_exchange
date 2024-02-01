@@ -1,3 +1,4 @@
+from typing import Optional
 from dotenv import load_dotenv
 import os
 import threading
@@ -17,10 +18,10 @@ from lib.gspreads import GSpreadsTable, GSpreadsTableMock
 
 @dataclasses.dataclass
 class GoogleSheetsConfig:
-    credential_filepath: str = None
-    spreadsheet_key: str = None
-    worksheet_title: str = None
-    mock: GSpreadsTableMock = None
+    credential_filepath: Optional[str] = None
+    spreadsheet_key: Optional[str] = None
+    worksheet_title: Optional[str] = None
+    mock: Optional[GSpreadsTableMock] = None
 
 
 @dataclasses.dataclass
@@ -43,13 +44,13 @@ BOOT_SIZE_MAX = 52
 class ShoesShopApp:
     ADM_USSERS = set([-4022793654, 863690])
 
-    def __init__(self, tg: Tg, gsheets_config: GoogleSheetsConfig = None):
+    def __init__(self, tg: Tg, gsheets_config: Optional[GoogleSheetsConfig] = None):
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
         c = gsheets_config
         if c and c.credential_filepath and not c.mock:
             logging.info("connecting Sheets API")
-            self._gs = GSpreadsTable(
+            self._gs: GSpreadsTable | GSpreadsTableMock = GSpreadsTable(
                 c.credential_filepath, c.spreadsheet_key, c.worksheet_title
             )
         else:

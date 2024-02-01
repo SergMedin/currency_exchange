@@ -10,7 +10,7 @@ from lib.db_sqla import SqlDb
 if __name__ == "__main__":
     load_dotenv()
     conn_str = os.getenv("EXCH_DB_CONN_STRING", "sqlite:///exchange_database.sqlite")
-    tg_token = os.getenv("EXCH_TG_TOKEN")
+    tg_token = os.environ["EXCH_TG_TOKEN"]
     print("tg_token: ..." + tg_token[-5:])
     zmq_orders_log_endpoint = os.getenv(
         "ZMQ_ORDERS_LOG_ENDPOINT", "inproc://orders.log"
