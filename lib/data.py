@@ -3,6 +3,7 @@ import enum
 from decimal import Decimal
 import unittest
 import time
+from typing import Optional
 
 
 class OrderType(enum.IntEnum):
@@ -37,12 +38,12 @@ class Order:
     type: OrderType
     price: Decimal
     amount_initial: Decimal
-    min_op_threshold: Decimal = 0
+    min_op_threshold: Decimal = Decimal(0.0)
     lifetime_sec: int = 48 * 60 * 60
     creation_time: int = dataclasses.field(default_factory=lambda: int(time.time()))
-    _id: int = None
-    amount_left: Decimal = -1.0
-    relative_rate: Decimal = -1.0  # -1.0 means not set
+    _id: Optional[int] = None
+    amount_left: Decimal = Decimal(-1.0)
+    relative_rate: Decimal = Decimal(-1.0)  # -1.0 means not set; why not None?
 
     def __post_init__(self):
         if self.amount_left == -1.0:

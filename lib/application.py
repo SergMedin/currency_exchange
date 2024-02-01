@@ -47,8 +47,7 @@ class Validator:
         if not amount.isnumeric():
             raise ValueError(f"Invalid amount: {amount}")
         try:
-            amount = Decimal(amount)
-            if amount <= 0:
+            if Decimal(amount) <= 0:
                 raise ValueError("Amount cannot be negative or zero")
         except InvalidOperation:
             raise ValueError(f"Invalid value for Decimal: {amount}")
@@ -61,7 +60,7 @@ class Validator:
         if currency_to.lower() not in ["amd"]:
             raise ValueError(f"Invalid currency: {currency_to}")
 
-    def validate_price(self, price: str):
+    def validate_price(self, price: str | Decimal):
         try:
             price = Decimal(price)
             if price != price.quantize(Decimal("0.0001")):
@@ -73,7 +72,9 @@ class Validator:
         except InvalidOperation:
             raise ValueError(f"Invalid value for Decimal: {price}")
 
-    def validate_min_op_threshold(self, min_op_threshold: str, amount: str):
+    def validate_min_op_threshold(
+        self, min_op_threshold: str | Decimal, amount: str | Decimal
+    ):
         try:
             min_op_threshold = Decimal(min_op_threshold)
             amount = Decimal(amount)
@@ -301,7 +302,7 @@ class Application:
 
     def _handle_order_creation_sm(self, m: TgIncomingMsg):
         if m.text == "Cancel":
-            reply_markup = self.MAIN_MENU_BUTTONS
+            reply_markup: list | None = self.MAIN_MENU_BUTTONS
             self._sessions[m.user_id]["order_creation_state_machine"] = None
             self._sessions[m.user_id]["order"] = None
             del self._sessions[m.user_id]
