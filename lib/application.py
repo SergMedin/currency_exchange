@@ -134,7 +134,9 @@ class Application:
         if debug_mode is False:
             load_dotenv()
             currency_client_api_key = os.getenv("EXCH_CURRENCYFREAKS_TOKEN")
-            currency_client = CurrencyFreaksClient(currency_client_api_key)
+            currency_client: CurrencyFreaksClient | CurrencyMockClient = (
+                CurrencyFreaksClient(currency_client_api_key)
+            )
             currency_converter = CurrencyConverter(currency_client)
         else:
             currency_client = CurrencyMockClient()
@@ -143,7 +145,7 @@ class Application:
         self._ex = Exchange(
             self._db, currency_converter, self._on_match, zmq_orders_log_endpoint
         )
-        self._sessions = {}
+        self._sessions: dict = {}
         self._app_db = TinyDB("./tg_data/app_db.json")
 
         if zmq_orders_log_endpoint:
@@ -272,7 +274,15 @@ class Application:
     def _prepare_order_creation(self, m: TgIncomingMsg, session=None):
         self._sessions[m.user_id] = {
             "order_creation_state_machine": OrderCreation(m.user_id),
-            "order": Order(User(m.user_id, m.user_name), None, None, None, None, None),
+            # TODO: class Order must not allow None values. Therefore we need to create a new class that will be used as a draft of the order.
+            "order": Order(
+                User(m.user_id, m.user_name),
+                OrderType.BUY,
+                Decimal(-1),
+                Decimal(-1),
+                Decimal(-1),
+                0,
+            ),
         }
         if session:
             self._sessions[m.user_id]["order_creation_state_machine"].state = session[
