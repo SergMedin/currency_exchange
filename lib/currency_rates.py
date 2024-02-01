@@ -26,7 +26,6 @@ class RepeatTimer(threading.Timer):
             self.function(*self.args, **self.kwargs)
 
 
-# FIXME: replace prints to logging (all code below)
 class CurrencyFreaksClient:
     def __init__(self, api_key):
         self.api_key = api_key
@@ -49,8 +48,6 @@ class CurrencyFreaksClient:
                 response = requests.get(
                     f"https://api.currencyfreaks.com/v2.0/rates/latest?apikey={self.api_key}&symbols=RUB,AMD"
                 )
-                # response.json() :
-                # {'date': '2024-01-21 00:00:00+00', 'base': 'USD', 'rates': {'AMD': '404.741979', 'RUB': '88.386974'}}
                 if response.status_code == 200:
                     self.rates = response.json().get("rates", {})
                     self.date = response.json().get("date", None)
