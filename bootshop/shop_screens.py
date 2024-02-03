@@ -231,6 +231,14 @@ class ConfirmController(EnterValueController):
 
 
 class OrderingController(Controller):
+    ORDER_FLOW = [
+        (SizeScreen, "size"),
+        (KablukController, "kabluk"),
+        (PyatkaController, "pyatka"),
+        (ColorController, "color"),
+        (ConfirmController, None),
+    ]
+
     @dataclass
     class OrderDraft:
         size: Optional[int] = None
@@ -244,35 +252,34 @@ class OrderingController(Controller):
         self.child = SizeScreen(self)
 
     def on_child_closed(self, child: Controller) -> OutMessage:
-        if isinstance(child, SizeScreen):
-            self.order.size = child.value
-            return self.show_child(KablukController(self))
-        elif isinstance(child, KablukController):
-            self.order.kabluk = child.value
-            return self.show_child(PyatkaController(self))
-        elif isinstance(child, PyatkaController):
-            self.order.pyatka = child.value
-            return self.show_child(ColorController(self))
-        elif isinstance(child, ColorController):
-            self.order.color = child.value
-            return self.show_child(ConfirmController(self))
-        elif isinstance(child, ConfirmController):
+        _, next, attr = self._get_flow_item(child)
+        if attr:
+            assert next and isinstance(child, EnterValueController)
+            setattr(self.order, attr, child.value)
+            return self.show_child(next(self))
+
+        if isinstance(child, ConfirmController):
             if child.value == "yes":
                 return OutMessage("Считаем, что заказ сделан") + self.close()
         raise ValueError("Unexpected child")
 
     def back(self, child: Controller) -> OutMessage:
-        if isinstance(child, SizeScreen):
-            raise ValueError("Can't go back from size screen")
-        elif isinstance(child, KablukController):
-            return self.show_child(SizeScreen(self))
-        elif isinstance(child, PyatkaController):
-            return self.show_child(KablukController(self))
-        elif isinstance(child, ColorController):
-            return self.show_child(PyatkaController(self))
-        elif isinstance(child, ConfirmController):
-            return self.show_child(ColorController(self))
+        prev, _, _ = self._get_flow_item(child)
+        if prev:
+            return self.show_child(prev(self))
         raise ValueError("Unexpected child")
 
     def cancel(self) -> OutMessage:
         return self.close()
+
+    def _get_flow_item(
+        self, child: Controller
+    ) -> tuple[type[Controller] | None, type[Controller] | None, Optional[str]]:
+        for i, (cls, attr) in enumerate(self.ORDER_FLOW):
+            if isinstance(child, cls):
+                prev = self.ORDER_FLOW[i - 1][0] if i > 0 else None
+                next = (
+                    self.ORDER_FLOW[i + 1][0] if i < len(self.ORDER_FLOW) - 1 else None
+                )
+                return prev, next, attr
+        return None, None, None
