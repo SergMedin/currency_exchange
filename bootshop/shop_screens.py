@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 from dataclasses import dataclass
 from .stories import (
     Controller,
@@ -8,6 +8,7 @@ from .stories import (
     Message,
     Button,
     OutMessage,
+    YesNoController,
 )
 
 
@@ -50,13 +51,20 @@ class MainController(Controller):
 
 
 class EnterOtherController(Controller):
-    def __init__(self, parent: "EnterValueController"):
+    def __init__(
+        self,
+        parent: "EnterValueController",
+        converter: Optional[Callable[[str], Any]] = None,
+    ):
         Controller.__init__(
             self,
             parent=parent,
             text="Введите значение:",
             buttons=[Button("Назад", "back"), Button("Отмена", "cancel")],
         )
+        if not converter:
+            converter = self._convert_to_int
+        self._convert = converter
 
     def process_event(self, e: Event) -> OutMessage:
         assert isinstance(self.parent, EnterValueController)
@@ -66,51 +74,45 @@ class EnterOtherController(Controller):
             elif e.name == "cancel":
                 return self.parent.ord.cancel()
             else:
-                raise NotImplementedError()
+                raise ValueError(f"Unexpected button {e.name}")
         elif isinstance(e, Message):
             if not e.text.startswith(">"):
                 m = self.render()
                 m.text = "Значение должно начинаться с '>'"
                 return m
             try:
-                self.parent.on_other_entered(self._convert(e.text[1:]))
+                return self.parent.on_other_entered(self._convert(e.text[1:]))
             except ValueError as e:
                 m = self.render()
                 m.text = str(e)
                 return m
         raise NotImplementedError()
 
-    def _convert(self, value: str) -> Any:
+    def _convert_to_int(self, value: str) -> Any:
         if value.isdigit():
             return int(value)
         raise ValueError("Значение должно быть числом")
 
 
-class YesNoController(Controller):
-    result: Optional[bool] = None
-
-    def __init__(self, parent: Controller, question: str):
-        Controller.__init__(
-            self,
-            text=question,
-            buttons=[Button("Да", "yes"), Button("Нет", "no")],
-        )
-
-    def process_event(self, e: Event) -> OutMessage:
-        if isinstance(e, ButtonAction):
-            if e.name in ("yes", "no"):
-                self.result = e.name == "yes"
-                return self.on_child_finished(self)
-        return self.render()
-
-
-class ConfirmCancelingController(YesNoController):
-    def __init__(self, parent: Controller):
-        YesNoController.__init__(self, parent, "Хотите прервать заказ?")
-
-
 class EnterValueController(Controller):
     value: Optional[Any] = None
+
+    def __init__(
+        self,
+        parent: "OrderingController",
+        text: str,
+        buttons: list[Button],
+        btn_other: bool = True,
+        confirm_cancel: bool = True,
+    ):
+        if btn_other:
+            buttons += [Button("Другой", "other")]
+        buttons += [
+            Button("Назад", "back"),
+            Button("Отмена", "cancel"),
+        ]
+        Controller.__init__(self, parent=parent, text=text, buttons=buttons)
+        self.confirm_cancel = confirm_cancel
 
     @property
     def ord(self) -> "OrderingController":
@@ -122,6 +124,8 @@ class EnterValueController(Controller):
         if isinstance(e, ButtonAction):
             if e.name == "other":
                 return self.show_child(EnterOtherController(self))
+            if e.name == "back":
+                return self.ord.back(self)
             elif e.name == "cancel":
                 return self.cancel()
             else:
@@ -130,13 +134,22 @@ class EnterValueController(Controller):
 
     def _got_value(self, value: Any) -> OutMessage:
         self.value = value
-        return self.ord.on_child_finished(self)
+        return self.close()
 
     def on_other_entered(self, value: int) -> OutMessage:
         return self._got_value(value)
 
     def cancel(self) -> OutMessage:
+        if self.confirm_cancel:
+            return self.show_child(YesNoController(self, "Хотите прервать заказ?"))
         return self.ord.cancel()
+
+    def on_child_closed(self, child: Controller) -> OutMessage:
+        if isinstance(child, YesNoController):
+            if child.result:
+                return self.ord.cancel()
+            return self.render()
+        raise ValueError("Unexpected child")
 
 
 class SizeScreen(EnterValueController):
@@ -145,6 +158,7 @@ class SizeScreen(EnterValueController):
             self,
             parent=ord,
             text="Выберите размер:",
+            confirm_cancel=False,
             buttons=[
                 Button("34"),
                 Button("35"),
@@ -153,8 +167,6 @@ class SizeScreen(EnterValueController):
                 Button("38"),
                 Button("39"),
                 Button("40"),
-                Button("Другой", "other"),
-                Button("Отмена", "cancel"),
             ],
         )
 
@@ -165,15 +177,13 @@ class KablukController(EnterValueController):
             self,
             parent=ord,
             text="Выберите каблук:",
+            confirm_cancel=False,
             buttons=[
                 Button("3"),
                 Button("9"),
                 Button("10"),
                 Button("85"),
                 Button("105"),
-                Button("Другой"),
-                Button("Назад"),
-                Button("Отмена"),
             ],
         )
 
@@ -189,9 +199,6 @@ class PyatkaController(EnterValueController):
                 Button("5"),
                 Button("7"),
                 Button("9"),
-                Button("Другой"),
-                Button("Назад"),
-                Button("Отмена"),
             ],
         )
 
@@ -206,35 +213,21 @@ class ColorController(EnterValueController):
                 Button("Черный"),
                 Button("Бежевый"),
                 Button("Белый"),
-                Button("Другой"),
-                Button("Назад"),
-                Button("Отмена"),
             ],
         )
 
 
-class ConfirmController(Controller):
-    def __init__(self):
-        Controller.__init__(
+class ConfirmController(EnterValueController):
+    def __init__(self, ord: "OrderingController"):
+        EnterValueController.__init__(
             self,
-            text="Подтвердите заказ:",
+            parent=ord,
+            text=f"Подтвердите заказ {ord.order}:",
             buttons=[
-                Button("Да, разместить заказ"),
-                Button("Назад"),
-                Button("Отмена"),
+                Button("Да, разместить заказ", "yes"),
             ],
+            btn_other=False,
         )
-
-    # def process_event(self, e: Event) -> OutMessage:
-    #     if isinstance(e, ButtonAction):
-    #         if e.name == "back":
-    #             s.state = OrderingState.COLOR
-    #         elif e.name == "cancel":
-    #             s.state = MainState.IDLE
-    #         else:
-    #             s.state = MainState.IDLE
-    #     elif isinstance(e, Message):
-    #         raise NotImplementedError()
 
 
 class OrderingController(Controller):
@@ -248,13 +241,9 @@ class OrderingController(Controller):
     def __init__(self, parent: Optional[Controller]):
         Controller.__init__(self, parent)
         self.order = self.OrderDraft()
+        self.child = SizeScreen(self)
 
-    def render(self) -> OutMessage:
-        if not self.child:
-            self.child = SizeScreen(self)
-        return self.child.render()
-
-    def on_child_finished(self, child: Controller) -> OutMessage:
+    def on_child_closed(self, child: Controller) -> OutMessage:
         if isinstance(child, SizeScreen):
             self.order.size = child.value
             return self.show_child(KablukController(self))
@@ -268,7 +257,21 @@ class OrderingController(Controller):
             self.order.color = child.value
             return self.show_child(ConfirmController(self))
         elif isinstance(child, ConfirmController):
-            pass
+            if child.value == "yes":
+                return OutMessage("Считаем, что заказ сделан") + self.close()
+        raise ValueError("Unexpected child")
+
+    def back(self, child: Controller) -> OutMessage:
+        if isinstance(child, SizeScreen):
+            raise ValueError("Can't go back from size screen")
+        elif isinstance(child, KablukController):
+            return self.show_child(SizeScreen(self))
+        elif isinstance(child, PyatkaController):
+            return self.show_child(KablukController(self))
+        elif isinstance(child, ColorController):
+            return self.show_child(PyatkaController(self))
+        elif isinstance(child, ConfirmController):
+            return self.show_child(ColorController(self))
         raise ValueError("Unexpected child")
 
     def cancel(self) -> OutMessage:

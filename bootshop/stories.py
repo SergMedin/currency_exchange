@@ -41,6 +41,10 @@ class Button:
 class OutMessage:
     text: str
     buttons: list[Button] = field(default_factory=list)
+    next: Optional["OutMessage"] = None
+
+    def __add__(self, other: "OutMessage") -> "OutMessage":
+        return OutMessage(self.text, self.buttons, other)
 
 
 @dataclass
@@ -54,7 +58,10 @@ class Controller:
         raise NotImplementedError()
 
     def render(self) -> OutMessage:
-        return OutMessage(self.text if self.text else "", self.buttons)
+        if self.child:
+            return self.child.render()
+        else:
+            return OutMessage(self.text if self.text else "", self.buttons)
 
     def show_child(self, child: "Controller") -> OutMessage:
         child.parent = self
@@ -65,7 +72,27 @@ class Controller:
         if self.parent is None:
             raise ValueError("Can't close root controller")
         self.parent.child = None
-        return self.parent.render()
+        return self.parent.on_child_closed(self)
 
-    def on_child_finished(self, child: "Controller") -> OutMessage:
-        raise NotImplementedError()
+    def on_child_closed(self, child: "Controller") -> OutMessage:
+        return self.render()
+
+
+@dataclass
+class YesNoController(Controller):
+    result: Optional[bool] = None
+
+    def __init__(self, parent: Controller, question: str):
+        Controller.__init__(
+            self,
+            parent=parent,
+            text=question,
+            buttons=[Button("Yes", "yes"), Button("No", "no")],
+        )
+
+    def process_event(self, e: Event) -> OutMessage:
+        if isinstance(e, ButtonAction):
+            if e.name in ("yes", "no"):
+                self.result = e.name == "yes"
+                return self.close()
+        raise ValueError("Unexpected event")

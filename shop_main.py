@@ -16,6 +16,8 @@ if __name__ == "__main__":
             for i, b in enumerate(m.buttons, start=1):
                 print(f"{i}. {b.text}")
             print("Введите номер кнопки:")
+        if m.next:
+            render_message(m.next)
 
     root = MainController()
     render_message(root.render())
@@ -23,10 +25,12 @@ if __name__ == "__main__":
     while True:
         print("=====================================")
 
-        top_ctl: Controller = root
-        while top_ctl.child:
-            top_ctl = top_ctl.child
+        stack: list[Controller] = [root]
+        while stack[-1].child is not None:
+            stack.append(stack[-1].child)
+        top_ctl = stack[-1]
 
+        print("Stack: [", " > ".join(c.__class__.__name__ for c in stack), "]")
         try:
             line = input(f" >>> ")
         except EOFError:
@@ -38,6 +42,10 @@ if __name__ == "__main__":
             btn = int(line) - 1
             if top_ctl.buttons is None:
                 raise ValueError("No buttons")
+            if btn < 0 or btn >= len(top_ctl.buttons):
+                raise ValueError(
+                    f"Invalid button number. Buttons: {top_ctl.buttons}, top_ctl: {top_ctl}"
+                )
             ev: Union[ButtonAction, Message] = ButtonAction(
                 1, name=top_ctl.buttons[btn].action
             )
