@@ -24,6 +24,22 @@ from lib import dialogs
 logger = get_logger(__name__)
 
 
+class LazyMessageLoader:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self._message = None
+
+    @property
+    def message(self):
+        if self._message is None:
+            if os.path.exists(self.file_path) and os.path.isfile(self.file_path):
+                with open(self.file_path, "r") as f:
+                    self._message = f.read().strip()
+            else:
+                raise FileNotFoundError(f"File {self.file_path} doesn't find.")
+        return self._message
+
+
 class Validator:
     def validate_add_command_params(self, params):
         if len(params) != 10:
@@ -135,6 +151,18 @@ class Application:
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
         self._sessions2: dict[int, dialogs.Main] = {}
+
+        self.start_message_loader = LazyMessageLoader(
+            os.path.join(os.path.dirname(__file__), "tg_messages", "start_message.md")
+        )
+        self.help_message_loader = LazyMessageLoader(
+            os.path.join(os.path.dirname(__file__), "tg_messages", "help_message.md")
+        )
+        self.disclaimer_message_loader = LazyMessageLoader(
+            os.path.join(
+                os.path.dirname(__file__), "tg_messages", "disclaimer_message.md"
+            )
+        )
 
         if debug_mode is False:
             load_dotenv()
@@ -253,17 +281,15 @@ class Application:
                 self._send_message(
                     m.user_id,
                     m.user_name,
-                    tg_start_message,
+                    self.start_message_loader.message,
                     parse_mode="Markdown",
                     reply_markup=self.MAIN_MENU_BUTTONS,
                 )
             elif command == "/help" or m.text == "Help":
-                with open("./lib/tg_messages/help_message.md", "r") as f:
-                    tg_help_message = f.read().strip()
                 self._send_message(
                     m.user_id,
                     m.user_name,
-                    tg_help_message,
+                    self.help_message_loader.message,
                     parse_mode="Markdown",
                     reply_markup=self.MAIN_MENU_BUTTONS,
                 )
@@ -317,7 +343,8 @@ class Application:
     def _prepare_order_creation(self, m: TgIncomingMsg, session=None):
         self._sessions[m.user_id] = {
             "order_creation_state_machine": OrderCreation(m.user_id),
-            # TODO: class Order must not allow None values. Therefore we need to create a new class that will be used as a draft of the order.
+            # TODO: class Order must not allow None values.
+            # Therefore we need to create a new class that will be used as a draft of the order.
             "order": Order(
                 User(m.user_id, m.user_name),
                 OrderType.BUY,
@@ -702,10 +729,12 @@ class Application:
         message_buyer = (
             f"Go and buy {m.amount} RUB from @{seller_name} for {m.price} per unit (you should send"
             f" {m.price * m.amount:.2f} AMD, you will get {m.amount:.2f} RUB)"
+            f"\n\n{self.disclaimer_message_loader.message}"
         )
         message_seller = (
             f"You should sell {m.amount} RUB to @{buyer_name} for {m.price} per unit (you should send"
             f" {m.amount:.2f} RUB, you will get {m.price * m.amount:.2f} AMD)"
+            f"\n\n{self.disclaimer_message_loader.message}"
         )
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
         self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))
