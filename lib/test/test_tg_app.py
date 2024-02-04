@@ -29,6 +29,21 @@ class TestTgApp(unittest.TestCase):
         self.assertIn("Create order", m.reply_markup[0])
         self.assertEqual("Markdown", m.parse_mode)
 
+    def test_help_command(self):
+        self.tg.emulate_incoming_message(1, "Joe", "/help")
+        self.assertEqual(1, len(self.tg.outgoing))
+        m = self.tg.outgoing[0]
+        self.assertIn("Operating Currency Pair", m.text)
+        self.tg.emulate_incoming_message(1, "Joe", "/new_dialogs")
+        m = self.tg.outgoing[-1]
+        self.assertIn("Welcome to the exchange service!", m.text)
+
+    def test_help_text(self):
+        self.tg.emulate_incoming_message(1, "Joe", "Help")
+        self.assertEqual(1, len(self.tg.outgoing))
+        m = self.tg.outgoing[0]
+        self.assertIn("Operating Currency Pair", m.text)
+
     def test_simple_match(self):
         self.tg.emulate_incoming_message(
             1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"

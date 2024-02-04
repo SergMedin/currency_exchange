@@ -1,3 +1,4 @@
+import os
 from bootshop.stories import (
     Controller,
     Event,
@@ -6,6 +7,12 @@ from bootshop.stories import (
     Message,
     Command,
     ButtonAction,
+)
+from .lazy_load import LazyMessageLoader
+
+
+_help_message_loader = LazyMessageLoader(
+    os.path.join(os.path.dirname(__file__), "tg_messages", "help_message.md")
 )
 
 
@@ -32,8 +39,14 @@ class Main(Controller):
         if isinstance(e, Command):
             if e.name == "start":
                 return self.render()
+            elif e.name == "help":
+                return self.show_child(Help(self))
             else:
                 raise ValueError(f"Unknown command: {e.name}")
+        elif isinstance(e, Message):
+            if e.text.lower() == "help":
+                return self.show_child(Help(self))
+            raise ValueError(f"Unknown message: {e.text}")
         elif isinstance(e, ButtonAction):
             return self.show_child(self._a2c[e.name](self))
         raise NotImplementedError()
@@ -96,13 +109,13 @@ class Statistics(Controller):
 
 class Help(Controller):
     def __init__(self, parent: Controller):
+        text = _help_message_loader.message
         super().__init__(
             parent=parent,
-            text="Help",
+            text=text,
+            parse_mode="Markdown",
             buttons=[[Button("Back")]],
         )
 
     def process_event(self, e: Event) -> OutMessage:
-        if isinstance(e, ButtonAction):
-            return self.close()
-        raise NotImplementedError()
+        return self.close()

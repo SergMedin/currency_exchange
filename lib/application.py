@@ -20,24 +20,9 @@ from .config import ORDER_LIFETIME_LIMIT
 
 from bootshop.stories import OutMessage, Command, Message, ButtonAction
 from lib import dialogs
+from .lazy_load import LazyMessageLoader
 
 logger = get_logger(__name__)
-
-
-class LazyMessageLoader:
-    def __init__(self, file_path):
-        self.file_path = file_path
-        self._message = None
-
-    @property
-    def message(self):
-        if self._message is None:
-            if os.path.exists(self.file_path) and os.path.isfile(self.file_path):
-                with open(self.file_path, "r") as f:
-                    self._message = f.read().strip()
-            else:
-                raise FileNotFoundError(f"File {self.file_path} doesn't find.")
-        return self._message
 
 
 class Validator:
@@ -230,7 +215,7 @@ class Application:
             command = command[1:]
             out = top.process_event(Command(m.user_id, name=command, args=args))
         else:
-            raise ValueError(f"Invalid command: {command}")
+            out = top.process_event(Message(m.user_id, text=m.text))
         while out:
             rm = [
                 [b.text for b in line] for line in out.buttons
@@ -286,6 +271,8 @@ class Application:
                     reply_markup=self.MAIN_MENU_BUTTONS,
                 )
             elif command == "/help" or m.text == "Help":
+                self._on_incoming_tg_message2(m)
+                return
                 self._send_message(
                     m.user_id,
                     m.user_name,
@@ -293,6 +280,8 @@ class Application:
                     parse_mode="Markdown",
                     reply_markup=self.MAIN_MENU_BUTTONS,
                 )
+            elif command == "/new_dialogs" or m.text == "Help":
+                self._on_incoming_tg_message2(m)
             elif command == "/add":
                 self._handle_add_command(m, params)
             elif command == "/list" or m.text == "My orders":
