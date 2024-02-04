@@ -214,7 +214,7 @@ class Application:
         try:
             _root = self._sessions2[m.user_id]
         except KeyError:
-            _root = dialogs.Main()
+            _root = dialogs.Main(dialogs.Session(m.user_id, m.user_name, self._ex))
             self._sessions2[m.user_id] = _root
 
         top = _root.get_top()

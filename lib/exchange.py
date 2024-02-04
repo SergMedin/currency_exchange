@@ -59,7 +59,7 @@ class Exchange:
         self._process_matches()
 
     def list_orders_for_user(self, user: data.User) -> list[data.Order]:
-        return [o for o in self._orders.values() if o.user == user]
+        return [o for o in self._orders.values() if o.user.id == user.id]
 
     def _check_order_lifetime(self) -> None:
         """

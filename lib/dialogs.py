@@ -1,3 +1,5 @@
+from typing import Any
+from dataclasses import dataclass
 import os
 import logging
 from bootshop.stories import (
@@ -10,6 +12,8 @@ from bootshop.stories import (
     ButtonAction,
 )
 from .lazy_load import LazyMessageLoader
+from .exchange import Exchange
+from .data import User
 
 
 _help_message_loader = LazyMessageLoader(
@@ -17,8 +21,28 @@ _help_message_loader = LazyMessageLoader(
 )
 
 
-class Main(Controller):
-    def __init__(self):
+@dataclass
+class Session:
+    user_id: int
+    user_name: str
+    exchange: Exchange
+
+
+@dataclass
+class ExchgController(Controller):
+    _session: Session | None = None
+
+    @property
+    def session(self) -> Session:
+        if self._session is None:
+            assert self.parent is not None
+            assert isinstance(self.parent, ExchgController)
+            return self.parent.session
+        return self._session
+
+
+class Main(ExchgController):
+    def __init__(self, session: Session):
         with open("./lib/tg_messages/start_message.md", "r") as f:
             tg_start_message = f.read().strip()
         super().__init__(
@@ -28,6 +52,7 @@ class Main(Controller):
                 [Button("Create order"), Button("My orders")],
                 [Button("Statistics"), Button("Help")],
             ],
+            _session=session,
         )
         self._a2c = {
             "create order": CreateOrder,
@@ -53,54 +78,85 @@ class Main(Controller):
         raise NotImplementedError()
 
 
-class CreateOrder(Controller):
+class CreateOrder(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Choose a product:",
+            text="Not supported yet",
             buttons=[
-                [Button("Shoes"), Button("Socks")],
                 [Button("Back")],
             ],
         )
-        self._a2c = {
-            "shoes": CreateOrder,
-            "socks": CreateOrder,
-            "back": Main,
-        }
 
     def process_event(self, e: Event) -> OutMessage:
-        if isinstance(e, ButtonAction):
-            return self.show_child(self._a2c[e.name](self))
-        raise NotImplementedError()
+        return self.close()
 
 
-class MyOrders(Controller):
+class MyOrders(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
             text="My orders",
-            buttons=[[Button("Order 1"), Button("Order 2")], [Button("Back")]],
+            buttons=[[Button("Back")]],
         )
-        self._a2c = {
-            "order 1": MyOrders,
-            "order 2": MyOrders,
-            "back": Main,
-        }
+
+    def render(self) -> OutMessage:
+        m = super().render()
+        orders = self.session.exchange.list_orders_for_user(
+            User(self.session.user_id, self.session.user_name)
+        )
+        if not orders:
+            text = "You don't have any active orders"
+        else:
+            text = "Your orders:\n"
+            for o in orders:
+                if o.relative_rate == -1.0:
+                    text_about_rate = f"{o.price} AMD"
+                else:
+                    text_about_rate = (
+                        f"{o.relative_rate} RELATIVE (current value: {o.price} AMD)"
+                    )
+
+                text += (
+                    "\n"
+                    f"\tid: {o._id} ({o.type.name} {o.amount_left} RUB * {text_about_rate} "
+                    f"min_amt {o.min_op_threshold} lifetime_h {o.lifetime_sec // 3600} "
+                    f"[until: {self._convert_to_utc(o.creation_time, o.lifetime_sec)}])"
+                )
+
+            text += "\n\nto remove an order, use /remove <id>"
+        m.text = text
+        return m
+
+    @staticmethod
+    def _convert_to_utc(creation_time, lifetime_sec):
+        import datetime  # FIXME: the uglier the better
+
+        # FIXME: refactor this out
+
+        return datetime.datetime.fromtimestamp(
+            creation_time + lifetime_sec, datetime.UTC
+        )
 
     def process_event(self, e: Event) -> OutMessage:
-        if isinstance(e, ButtonAction):
-            return self.show_child(self._a2c[e.name](self))
-        raise NotImplementedError()
+        return self.close()
 
 
-class Statistics(Controller):
+class Statistics(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Statistics",
+            text="",
             buttons=[[Button("Back")]],
         )
+
+    def render(self) -> OutMessage:
+        m = super().render()
+        ex = self.session.exchange
+        ex._check_order_lifetime()  # FIXME: should be removed
+        text = ex.get_stats()["text"]
+        m.text = text
+        return m
 
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, ButtonAction):
