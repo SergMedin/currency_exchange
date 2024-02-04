@@ -7,22 +7,19 @@ from tinydb import TinyDB, Query
 from dotenv import load_dotenv
 
 from .db import Db
-from .tg import Tg, TgIncomingMsg, TgOutgoingMsg
+from .tg import Tg, TgIncomingMsg, TgOutgoingMsg, InlineKeyboardButton
 
 from .exchange import Exchange
 from .gsheets_loger import GSheetsLoger
 from .data import Match, Order, User, OrderType
-from .logger import get_logger
 from .statemachines import OrderCreation
 
 from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMockClient
 from .config import ORDER_LIFETIME_LIMIT
 
-from bootshop.stories import OutMessage, Command, Message, ButtonAction
+from bootshop.stories import OutMessage, Command, Message, ButtonAction, Button
 from lib import dialogs
 from .lazy_load import LazyMessageLoader
-
-logger = get_logger(__name__)
 
 
 class Validator:
@@ -149,7 +146,7 @@ class Application:
             )
         )
 
-        if debug_mode is False:
+        if debug_mode is False and "EXCH_CURRENCYFREAKS_TOKEN" in os.environ:
             load_dotenv()
             currency_client_api_key = os.getenv("EXCH_CURRENCYFREAKS_TOKEN")
             currency_client: CurrencyFreaksClient | CurrencyMockClient = (
@@ -179,8 +176,21 @@ class Application:
         self._loger.stop()
 
     def _send_message(
-        self, user_id, user_name, message, parse_mode=None, reply_markup=None
+        self,
+        user_id,
+        user_name,
+        message,
+        parse_mode=None,
+        reply_markup=None,
+        inline_keyboard: list[list[Button]] | None = None,
     ):
+        if inline_keyboard:
+            keyboard = [
+                [InlineKeyboardButton(b.text, callback_data=b.text) for b in line]
+                for line in inline_keyboard
+            ]
+        else:
+            keyboard = None
         self._tg.send_message(
             TgOutgoingMsg(
                 user_id,
@@ -188,6 +198,7 @@ class Application:
                 message,
                 reply_markup=reply_markup,
                 parse_mode=parse_mode,
+                inline_keyboard=keyboard,
             ),
             parse_mode=parse_mode,
             reply_markup=reply_markup,
@@ -217,15 +228,12 @@ class Application:
         else:
             out = top.process_event(Message(m.user_id, text=m.text))
         while out:
-            rm = [
-                [b.text for b in line] for line in out.buttons
-            ]  # FIXME: use inline keyboard here
             self._send_message(
                 m.user_id,
                 m.user_name,
                 out.text,
-                reply_markup=rm,
                 parse_mode=out.parse_mode,
+                inline_keyboard=out.buttons,
             )
             out = out.next
 

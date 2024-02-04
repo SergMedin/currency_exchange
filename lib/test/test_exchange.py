@@ -1,6 +1,7 @@
 import time
 import unittest
 import threading
+import logging
 from decimal import Decimal
 import os
 from ..exchange import Exchange
@@ -9,10 +10,6 @@ from ..data import Order, User, OrderType
 from ..gsheets_loger import GSheetsLoger
 from ..config import ORDER_LIFETIME_LIMIT
 from ..currency_rates import CurrencyConverter, CurrencyMockClient
-
-from ..logger import get_logger
-
-logger = get_logger(__name__)
 
 
 class T(unittest.TestCase):
@@ -46,7 +43,7 @@ class T(unittest.TestCase):
         return super().tearDown()
 
     def testConstruction(self):
-        logger.debug("[ testConstruction ]".center(80, "|"))
+        logging.debug("[ testConstruction ]".center(80, "|"))
         currency_client = CurrencyMockClient()
         currency_converter = CurrencyConverter(currency_client)
         Exchange(self.db, currency_converter, None)
@@ -134,7 +131,7 @@ class T(unittest.TestCase):
         self.assertEqual(self.exchange._orders[2].min_op_threshold, 20.0)
 
     def testDifferentPricesSellMoreThanBuy(self):
-        logger.debug("[ testDifferentPricesSellMoreThanBuy ]".center(80, "|"))
+        logging.debug("[ testDifferentPricesSellMoreThanBuy ]".center(80, "|"))
         self.exchange.on_new_order(
             Order(
                 User(1), OrderType.SELL, 10.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
@@ -146,7 +143,7 @@ class T(unittest.TestCase):
         self.assertEqual(len(self.matches), 0)
 
     def testDifferentPricesSellLessThanBuy(self):
-        logger.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
+        logging.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
         self.exchange.on_new_order(
             Order(
                 User(1),
@@ -171,7 +168,7 @@ class T(unittest.TestCase):
         self.assertEqual(self.matches[-1].price, Decimal("10.1956"))
 
     def testManyOrders(self):
-        logger.debug("[ testManyOrders ]".center(80, "|"))
+        logging.debug("[ testManyOrders ]".center(80, "|"))
         self.exchange.on_new_order(
             Order(
                 User(1), OrderType.SELL, 100.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
@@ -195,7 +192,7 @@ class T(unittest.TestCase):
         self.assertEqual(len(self.matches), 1)
 
     def testMinOpThresholdSuitable(self):
-        logger.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
+        logging.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
         self.exchange.on_new_order(
             Order(User(1), OrderType.SELL, 4.51, 1000, 500.0, lifetime_sec=48 * 60 * 60)
         )
@@ -205,7 +202,7 @@ class T(unittest.TestCase):
         self.assertEqual(len(self.matches), 1)
 
     def testMinOpThresholdUnsuitable(self):
-        logger.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
+        logging.debug("[ testDifferentPricesSellLessThanBuy ]".center(80, "|"))
         self.exchange.on_new_order(
             Order(User(1), OrderType.SELL, 4.51, 1000, 500.0, lifetime_sec=48 * 60 * 60)
         )
@@ -215,7 +212,7 @@ class T(unittest.TestCase):
         self.assertEqual(len(self.matches), 0)
 
     def testOrderLifetimeExceeded(self):
-        logger.debug("[ testOrderLifetimeExceeded ]".center(80, "|"))
+        logging.debug("[ testOrderLifetimeExceeded ]".center(80, "|"))
         self.exchange.on_new_order(
             Order(
                 user=User(1),
@@ -252,7 +249,7 @@ class T(unittest.TestCase):
         self.assertEqual(len(self.exchange._orders), 2)
 
     def testOrderLifetimeIncorrectInput(self):
-        logger.debug("[ testOrderLifetimeIncorrectInput ]".center(80, "|"))
+        logging.debug("[ testOrderLifetimeIncorrectInput ]".center(80, "|"))
         with self.assertRaises(ValueError):
             self.exchange.on_new_order(
                 Order(

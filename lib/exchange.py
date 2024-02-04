@@ -1,4 +1,5 @@
 from typing import List, Tuple
+import logging
 import time
 import dataclasses
 import unittest
@@ -8,10 +9,6 @@ from decimal import Decimal
 from .db import Db
 from .config import ORDER_LIFETIME_LIMIT
 from . import data
-
-from .logger import get_logger
-
-logger = get_logger(__name__)
 
 
 class Exchange:
@@ -118,7 +115,7 @@ class Exchange:
             key=lambda x: x.creation_time,
         )
 
-        logger.debug(f"S: {sellers}\nB: {buyers}\n")
+        logging.debug(f"S: {sellers}\nB: {buyers}\n")
 
         for seller in sellers:
             for buyer in buyers:
@@ -144,7 +141,7 @@ class Exchange:
                         match_amount,
                     )
 
-                    logger.debug(f"match: {match}")
+                    logging.debug(f"match: {match}")
                     if self._on_match:
                         self._on_match(match)
 
