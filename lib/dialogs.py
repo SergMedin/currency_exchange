@@ -197,21 +197,19 @@ class EnterPriceStep(ExchgController):
 
     def on_child_closed(self, child: Controller) -> OutMessage:
         if isinstance(child, EnterRelativeRateStep):
-            if child.rate is not None:
-                self.relative_rate = child.rate
-                return self.close()
-        raise NotImplementedError()
+            if self.relative_rate:
+                self.close()
+        return self.render()
 
 
 @dataclass
 class EnterRelativeRateStep(ExchgController):
-    rate: Decimal | None = None
 
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
             text="Enter the desired exchange rate relative to the exchange. For example: 1.01 (above the exchange rate by 1%) or 0.98 (below the exchange rate by 2%). Current exchange rate: 4.4628 AMD/RUB",
-            buttons=[[Button("Cancel", "cancel")]],
+            buttons=[[Button("Назад", "back")]],
         )
 
     def process_event(self, e: Event) -> OutMessage:
@@ -222,16 +220,79 @@ class EnterRelativeRateStep(ExchgController):
                     return OutMessage("Rate have to be > 0") + self.render()
                 assert self.parent is not None
                 assert isinstance(self.parent, EnterPriceStep)
-                self.rate = rate
+                self.parent.relative_rate = rate
                 return self.close()
             except decimal.InvalidOperation as e:
                 return (
                     OutMessage("Rate should be a valid decimal number") + self.render()
                 )
         elif isinstance(e, ButtonAction):
-            if e.name == "cancel":
-                assert self.parent is not None and isinstance(self.parent, CreateOrder)
-                return self.parent.cancel()
+            if e.name == "back":
+                return self.close()
+        raise NotImplementedError()
+
+
+class SetMinOpThresholdStep(ExchgController):
+
+    def __init__(self, parent: Controller):
+        assert parent is not None and isinstance(parent, ConfirmOrderStep)
+        super().__init__(
+            parent=parent,
+            text="Укажите минимальную сумму для операции",
+            buttons=[[Button("Назад", "back")]],
+        )
+
+    def process_event(self, e: Event) -> OutMessage:
+        if isinstance(e, Message):
+            try:
+                min_op_threshold = Decimal(e.text)
+                if min_op_threshold <= 0:
+                    return OutMessage("Min op threshold have to be > 0") + self.render()
+                assert self.parent is not None and isinstance(
+                    self.parent, ConfirmOrderStep
+                )
+                self.parent.min_op_threshold = min_op_threshold
+                return self.close()
+            except decimal.InvalidOperation as e:
+                return (
+                    OutMessage("Min op threshold should be a valid decimal number")
+                    + self.render()
+                )
+        elif isinstance(e, ButtonAction):
+            if e.name == "back":
+                return self.close()
+        raise NotImplementedError()
+
+
+class SetLifetimeStep(ExchgController):
+
+    def __init__(self, parent: Controller):
+        assert parent is not None and isinstance(parent, ConfirmOrderStep)
+        super().__init__(
+            parent=parent,
+            text="Укажите время жизни заказа в часах",
+            buttons=[[Button("Назад", "back")]],
+        )
+
+    def process_event(self, e: Event) -> OutMessage:
+        if isinstance(e, Message):
+            try:
+                lifetime_sec = int(e.text) * 3600
+                if lifetime_sec <= 0:
+                    return OutMessage("Lifetime have to be > 0") + self.render()
+                assert self.parent is not None and isinstance(
+                    self.parent, ConfirmOrderStep
+                )
+                self.parent.lifetime_sec = lifetime_sec
+                return self.close()
+            except ValueError as e:
+                return (
+                    OutMessage("Lifetime should be a valid integer number")
+                    + self.render()
+                )
+        elif isinstance(e, ButtonAction):
+            if e.name == "back":
+                return self.close()
         raise NotImplementedError()
 
 
@@ -262,6 +323,10 @@ class ConfirmOrderStep(ExchgController):
             elif e.name == "place_order":
                 self.confirmed = True
                 return self.close()
+            elif e.name == "set_min_op_threshold":
+                return self.show_child(SetMinOpThresholdStep(self))
+            elif e.name == "set_lifetime":
+                return self.show_child(SetLifetimeStep(self))
         raise NotImplementedError()
 
 
@@ -320,6 +385,7 @@ class CreateOrder(ExchgController):
                 )
                 self.session.exchange.on_new_order(o)
                 return self.close()
+        logging.error(f"Unknown child: {child}, {child.__class__}")
         raise NotImplementedError()
 
     def cancel(self):
