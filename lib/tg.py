@@ -67,9 +67,13 @@ class TelegramMock(Tg):
         self.outgoing.append(m)
 
     def emulate_incoming_message(
-        self, from_user_id: int, from_user_name: str, text: str
+        self,
+        from_user_id: int,
+        from_user_name: str,
+        text: str,
+        keyboard_callback: str | None = None,
     ):
-        m = TgIncomingMsg(from_user_id, from_user_name, text)
+        m = TgIncomingMsg(from_user_id, from_user_name, text, keyboard_callback)
         self.incoming.append(m)
         if self.on_message is not None:
             self.on_message(m)

@@ -34,7 +34,7 @@ class TestTgApp(unittest.TestCase):
         self.assertEqual(1, len(self.tg.outgoing))
         m = self.tg.outgoing[0]
         self.assertIn("Operating Currency Pair", m.text)
-        self.tg.emulate_incoming_message(1, "Joe", "/new_dialogs")
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
         self.assertIn("Welcome to the exchange service!", m.text)
 
@@ -43,6 +43,27 @@ class TestTgApp(unittest.TestCase):
         self.assertEqual(1, len(self.tg.outgoing))
         m = self.tg.outgoing[0]
         self.assertIn("Operating Currency Pair", m.text)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
+        m = self.tg.outgoing[-1]
+        self.assertIn("Welcome to the exchange service!", m.text)
+
+    def test_statistic_button(self):
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="statistics")
+        self.assertEqual(1, len(self.tg.outgoing))
+        m = self.tg.outgoing[-1]
+        self.assertIn("Current exchange rate:", m.text)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
+        m = self.tg.outgoing[-1]
+        self.assertIn("Welcome to the exchange service!", m.text)
+
+    def test_my_orders_button(self):
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="my_orders")
+        self.assertEqual(1, len(self.tg.outgoing))
+        m = self.tg.outgoing[-1]
+        self.assertIn("You don't have any active orders", m.text)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
+        m = self.tg.outgoing[-1]
+        self.assertIn("Welcome to the exchange service!", m.text)
 
     def test_simple_match(self):
         self.tg.emulate_incoming_message(

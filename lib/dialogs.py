@@ -51,14 +51,14 @@ class Main(ExchgController):
             text=tg_start_message,
             parse_mode="Markdown",
             buttons=[
-                [Button("Create order"), Button("My orders")],
-                [Button("Statistics"), Button("Help")],
+                [Button("Create order"), Button("My orders", "my_orders")],
+                [Button("Statistics", "statistics"), Button("Help", "help")],
             ],
             _session=session,
         )
         self._a2c = {
             "create order": CreateOrder,
-            "my orders": MyOrders,
+            "my_orders": MyOrders,
             "statistics": Statistics,
             "help": Help,
         }
@@ -175,7 +175,7 @@ class Help(Controller):
             parent=parent,
             text=text,
             parse_mode="Markdown",
-            buttons=[[Button("Back")]],
+            buttons=[[Button("Back", "back")]],
         )
 
     def process_event(self, e: Event) -> OutMessage:
