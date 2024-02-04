@@ -18,6 +18,7 @@ class TgIncomingMsg:
     user_id: int
     user_name: str
     text: str
+    keyboard_callback: str | None = None
 
 
 @dataclasses.dataclass
@@ -110,7 +111,7 @@ class TelegramReal(Tg):
     async def _callback_query_handler(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        logging.info(f"got callback query. Update: {update}")
+        # logging.info(f"got callback query. Update: {update}")
         query = update.callback_query
         if query is None:
             logging.warning(f"got invalid callback query. Update: {update}")
@@ -118,7 +119,22 @@ class TelegramReal(Tg):
         # CallbackQueries need to be answered, even if no notification to the user is needed
         # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
         await query.answer()
-        await query.edit_message_text(text=f"Selected option: {query.data}")
+        # await query.edit_message_text(text=f"Selected option: {query.data}")
+
+        if update.effective_chat is None or update.effective_chat.username is None:
+            logging.warning(f"got invalid query callback update. Update: {update}")
+            return
+        message = TgIncomingMsg(
+            update.effective_chat.id,
+            update.effective_chat.username,
+            "",
+            keyboard_callback=query.data,
+        )
+        try:
+            self.on_message(message)
+        except ValueError as e:
+            logging.error(f"Error: {str(e)}")
+            # await update.message.reply_text(f"Error: {str(e)}")
 
     def send_message(self, m: TgOutgoingMsg, parse_mode=None, reply_markup=None):
         if reply_markup:

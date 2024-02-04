@@ -1,4 +1,5 @@
 import os
+import logging
 from bootshop.stories import (
     Controller,
     Event,
@@ -48,7 +49,7 @@ class Main(Controller):
                 return self.show_child(Help(self))
             raise ValueError(f"Unknown message: {e.text}")
         elif isinstance(e, ButtonAction):
-            return self.show_child(self._a2c[e.name](self))
+            return self.show_child(self._a2c[e.name.lower()](self))
         raise NotImplementedError()
 
 
@@ -118,4 +119,5 @@ class Help(Controller):
         )
 
     def process_event(self, e: Event) -> OutMessage:
+        logging.info(f"Help.process_event: {e}")
         return self.close()

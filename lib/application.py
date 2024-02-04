@@ -216,17 +216,21 @@ class Application:
         except KeyError:
             _root = dialogs.Main()
             self._sessions2[m.user_id] = _root
+
         top = _root.get_top()
         out: Optional[OutMessage] = None
 
-        pp = m.text.lower().strip().split(" ")
-        command = pp[0]
-        args = pp[1:]
-        if command.startswith("/"):
-            command = command[1:]
-            out = top.process_event(Command(m.user_id, name=command, args=args))
+        if m.keyboard_callback:
+            out = top.process_event(ButtonAction(m.user_id, name=m.keyboard_callback))
         else:
-            out = top.process_event(Message(m.user_id, text=m.text))
+            pp = m.text.lower().strip().split(" ")
+            command = pp[0]
+            args = pp[1:]
+            if command.startswith("/"):
+                command = command[1:]
+                out = top.process_event(Command(m.user_id, name=command, args=args))
+            else:
+                out = top.process_event(Message(m.user_id, text=m.text))
         while out:
             self._send_message(
                 m.user_id,
@@ -238,6 +242,10 @@ class Application:
             out = out.next
 
     def _on_incoming_tg_message(self, m: TgIncomingMsg):
+        if m.keyboard_callback:
+            self._on_incoming_tg_message2(m)
+            return
+
         try:
             if m.user_id < 0:
                 raise ValueError("We don't work with groups yet")
