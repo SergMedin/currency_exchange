@@ -75,7 +75,7 @@ class Main(ExchgController):
             elif e.name == "help":
                 return self.show_child(Help(self))
             else:
-                raise ValueError(f"Unknown command: {e.name}")
+                raise ValueError(f"Invalid command: /{e.name}")
         elif isinstance(e, Message):
             if e.text.lower() == "help":
                 return self.show_child(Help(self))

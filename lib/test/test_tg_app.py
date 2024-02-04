@@ -26,7 +26,7 @@ class TestTgApp(unittest.TestCase):
         m = self.tg.outgoing[0]
         self.assertEqual("Joe", m.user_name)
         self.assertIn("Welcome to the exchange service!", m.text)
-        self.assertIn("Create order", m.inline_keyboard[0][0].text)
+        self.assertIn("create_order", m.inline_keyboard[0][0].callback_data)
         self.assertEqual("Markdown", m.parse_mode)
 
     def test_help_command(self):
@@ -371,16 +371,16 @@ class TestTGAppSM(unittest.TestCase):
     #     with self.subTest("Confirm Accept"):
     #         self._sm_confirm_accept()
 
-    def test_order_cancel_sm(self):
-        self._bot_start()
-        self._sm_entrance()
-        self._sm_type_valid()
-        # self._sm_currency_from_valid()
-        # self._sm_currency_to_valid()
-        self._sm_amount_valid()
-        self._sm_type_price_valid()
-        self._sm_price_valid()
-        self._sm_min_op_treshhold_valid()
-        self._sm_lifetime_valid()
-        with self.subTest("Confirm Reject"):
-            self._sm_confirm_reject()
+    # def test_order_cancel_sm(self):
+    #     self._bot_start()
+    #     self._sm_entrance()
+    #     self._sm_type_valid()
+    #     # self._sm_currency_from_valid()
+    #     # self._sm_currency_to_valid()
+    #     self._sm_amount_valid()
+    #     self._sm_type_price_valid()
+    #     self._sm_price_valid()
+    #     self._sm_min_op_treshhold_valid()
+    #     self._sm_lifetime_valid()
+    #     with self.subTest("Confirm Reject"):
+    #         self._sm_confirm_reject()

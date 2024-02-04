@@ -211,6 +211,9 @@ class Application:
                 return user_query[0]
 
     def _on_incoming_tg_message2(self, m: TgIncomingMsg):
+        if m.user_id < 0:
+            raise ValueError("We don't work with groups yet")
+
         try:
             _root = self._sessions2[m.user_id]
         except KeyError:
@@ -226,6 +229,17 @@ class Application:
             pp = m.text.lower().strip().split(" ")
             command = pp[0]
             args = pp[1:]
+
+            # FIXME: remove this
+            if command == "/add":
+                return self._handle_add_command(m, args)
+            elif command == "/list" or m.text == "My orders":
+                return self._handle_list_command(m)
+            elif command == "/remove":
+                return self._handle_remove_command(m, args)
+            elif command == "/stat" or m.text == "Statistics":
+                return self._handle_stat_command(m)
+
             if command.startswith("/"):
                 command = command[1:]
                 out = top.process_event(Command(m.user_id, name=command, args=args))
@@ -243,7 +257,10 @@ class Application:
             out = out.next
 
     def _on_incoming_tg_message(self, m: TgIncomingMsg):
-        return self._on_incoming_tg_message2(m)
+        try:
+            return self._on_incoming_tg_message2(m)
+        except ValueError as e:
+            self._send_message(m.user_id, m.user_name, f"Error: {str(e)}")
 
     def _on_incoming_tg_message_old(self, m: TgIncomingMsg):
         if m.keyboard_callback:
