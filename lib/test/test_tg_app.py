@@ -26,7 +26,7 @@ class TestTgApp(unittest.TestCase):
         m = self.tg.outgoing[0]
         self.assertEqual("Joe", m.user_name)
         self.assertIn("Welcome to the exchange service!", m.text)
-        self.assertIn("Create order", m.reply_markup[0])
+        self.assertIn("Create order", m.inline_keyboard[0][0].text)
         self.assertEqual("Markdown", m.parse_mode)
 
     def test_help_command(self):
