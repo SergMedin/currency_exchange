@@ -186,7 +186,7 @@ class Application:
     ):
         if inline_keyboard:
             keyboard = [
-                [InlineKeyboardButton(b.text, callback_data=b.text) for b in line]
+                [InlineKeyboardButton(b.text, callback_data=b.action) for b in line]
                 for line in inline_keyboard
             ]
         else:
