@@ -21,6 +21,7 @@ _help_message_loader = LazyMessageLoader(
 )
 
 
+# FIXME: should go to the framework level
 @dataclass
 class Session:
     user_id: int
@@ -30,10 +31,11 @@ class Session:
 
 @dataclass
 class ExchgController(Controller):
-    _session: Session | None = None
+    _session: Session | None = None  # FIXME: this is ugly. Should be refactored
 
     @property
     def session(self) -> Session:
+        # FIXME: this is ugly. Should be refactored
         if self._session is None:
             assert self.parent is not None
             assert isinstance(self.parent, ExchgController)
@@ -102,6 +104,7 @@ class MyOrders(ExchgController):
 
     def render(self) -> OutMessage:
         m = super().render()
+        # FIXME: I don't like that the controller knows about the exchange
         orders = self.session.exchange.list_orders_for_user(
             User(self.session.user_id, self.session.user_name)
         )
@@ -152,6 +155,7 @@ class Statistics(ExchgController):
 
     def render(self) -> OutMessage:
         m = super().render()
+        # FIXME: should go somewhere in application
         ex = self.session.exchange
         ex._check_order_lifetime()  # FIXME: should be removed
         text = ex.get_stats()["text"]
