@@ -145,6 +145,9 @@ class Application:
         self.help_message_loader = LazyMessageLoader(
             os.path.join(os.path.dirname(__file__), "tg_messages", "help_message.md")
         )
+        self.disclaimer_message_loader = LazyMessageLoader(
+            os.path.join(os.path.dirname(__file__), "tg_messages", "disclaimer_message.md")
+        )
 
         if debug_mode is False:
             load_dotenv()
@@ -623,10 +626,12 @@ class Application:
         message_buyer = (
             f"Go and buy {m.amount} RUB from @{seller_name} for {m.price} per unit (you should send"
             f" {m.price * m.amount:.2f} AMD, you will get {m.amount:.2f} RUB)"
+            f"\n\n{self.disclaimer_message_loader.message}"
         )
         message_seller = (
             f"You should sell {m.amount} RUB to @{buyer_name} for {m.price} per unit (you should send"
             f" {m.amount:.2f} RUB, you will get {m.price * m.amount:.2f} AMD)"
+            f"\n\n{self.disclaimer_message_loader.message}"
         )
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
         self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))
