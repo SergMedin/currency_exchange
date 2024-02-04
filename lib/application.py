@@ -231,6 +231,7 @@ class Application:
                 out = top.process_event(Command(m.user_id, name=command, args=args))
             else:
                 out = top.process_event(Message(m.user_id, text=m.text))
+
         while out:
             self._send_message(
                 m.user_id,
@@ -242,6 +243,9 @@ class Application:
             out = out.next
 
     def _on_incoming_tg_message(self, m: TgIncomingMsg):
+        return self._on_incoming_tg_message2(m)
+
+    def _on_incoming_tg_message_old(self, m: TgIncomingMsg):
         if m.keyboard_callback:
             self._on_incoming_tg_message2(m)
             return
