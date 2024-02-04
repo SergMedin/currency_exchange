@@ -24,6 +24,12 @@ class Message(Event):
 
 
 @dataclass
+class Command(Event):
+    name: str
+    args: list[str]
+
+
+@dataclass
 class Button:
     text: str
     action: str
@@ -40,8 +46,9 @@ class Button:
 @dataclass
 class OutMessage:
     text: str
-    buttons: list[Button] = field(default_factory=list)
+    buttons: list[list[Button]] = field(default_factory=list)
     next: Optional["OutMessage"] = None
+    parse_mode: Optional[str] = None
 
     def __add__(self, other: "OutMessage") -> "OutMessage":
         return OutMessage(self.text, self.buttons, other)
@@ -52,7 +59,8 @@ class Controller:
     parent: Optional["Controller"] = None
     child: Optional["Controller"] = None
     text: Optional[str] = ""
-    buttons: list[Button] = field(default_factory=list)
+    buttons: list[list[Button]] = field(default_factory=list)
+    parse_mode: Optional[str] = None
 
     def process_event(self, e: Event) -> OutMessage:
         raise NotImplementedError()
@@ -61,7 +69,9 @@ class Controller:
         if self.child:
             return self.child.render()
         else:
-            return OutMessage(self.text if self.text else "", self.buttons)
+            return OutMessage(
+                self.text if self.text else "", self.buttons, parse_mode=self.parse_mode
+            )
 
     def show_child(self, child: "Controller") -> OutMessage:
         child.parent = self
@@ -77,6 +87,11 @@ class Controller:
     def on_child_closed(self, child: "Controller") -> OutMessage:
         return self.render()
 
+    def get_top(self) -> "Controller":
+        if self.child:
+            return self.child.get_top()
+        return self
+
 
 @dataclass
 class YesNoController(Controller):
@@ -87,7 +102,7 @@ class YesNoController(Controller):
             self,
             parent=parent,
             text=question,
-            buttons=[Button("Yes", "yes"), Button("No", "no")],
+            buttons=[[Button("Yes", "yes"), Button("No", "no")]],
         )
 
     def process_event(self, e: Event) -> OutMessage:

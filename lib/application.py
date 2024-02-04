@@ -1,3 +1,4 @@
+from typing import Optional
 from decimal import Decimal, InvalidOperation
 import datetime
 import os
@@ -16,6 +17,9 @@ from .statemachines import OrderCreation
 
 from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMockClient
 from .config import ORDER_LIFETIME_LIMIT
+
+from bootshop.stories import OutMessage, Command, Message, ButtonAction
+from lib import dialogs
 
 logger = get_logger(__name__)
 
@@ -130,6 +134,7 @@ class Application:
         self._db = db
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
+        self._sessions2: dict[int, dialogs.Main] = {}
 
         if debug_mode is False:
             load_dotenv()
@@ -164,7 +169,13 @@ class Application:
         self, user_id, user_name, message, parse_mode=None, reply_markup=None
     ):
         self._tg.send_message(
-            TgOutgoingMsg(user_id, user_name, message),
+            TgOutgoingMsg(
+                user_id,
+                user_name,
+                message,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode,
+            ),
             parse_mode=parse_mode,
             reply_markup=reply_markup,
         )
@@ -174,6 +185,36 @@ class Application:
         if user_query:
             if user_query[0].get("order_creation_state_machine"):
                 return user_query[0]
+
+    def _on_incoming_tg_message2(self, m: TgIncomingMsg):
+        try:
+            _root = self._sessions2[m.user_id]
+        except KeyError:
+            _root = dialogs.Main()
+            self._sessions2[m.user_id] = _root
+        top = _root.get_top()
+        out: Optional[OutMessage] = None
+
+        pp = m.text.lower().strip().split(" ")
+        command = pp[0]
+        args = pp[1:]
+        if command.startswith("/"):
+            command = command[1:]
+            out = top.process_event(Command(m.user_id, name=command, args=args))
+        else:
+            raise ValueError(f"Invalid command: {command}")
+        while out:
+            rm = [
+                [b.text for b in line] for line in out.buttons
+            ]  # FIXME: use inline keyboard here
+            self._send_message(
+                m.user_id,
+                m.user_name,
+                out.text,
+                reply_markup=rm,
+                parse_mode=out.parse_mode,
+            )
+            out = out.next
 
     def _on_incoming_tg_message(self, m: TgIncomingMsg):
         try:
@@ -205,6 +246,8 @@ class Application:
             params = pp[1:]
 
             if command == "/start":
+                self._on_incoming_tg_message2(m)
+                return
                 with open("./lib/tg_messages/start_message.md", "r") as f:
                     tg_start_message = f.read().strip()
                 self._send_message(

@@ -20,6 +20,15 @@ class TestTgApp(unittest.TestCase):
     def tearDown(self) -> None:
         self.app._app_db.close()
 
+    def test_start_command(self):
+        self.tg.emulate_incoming_message(1, "Joe", "/start")
+        self.assertEqual(1, len(self.tg.outgoing))
+        m = self.tg.outgoing[0]
+        self.assertEqual("Joe", m.user_name)
+        self.assertIn("Welcome to the exchange service!", m.text)
+        self.assertIn("Create order", m.reply_markup[0])
+        self.assertEqual("Markdown", m.parse_mode)
+
     def test_simple_match(self):
         self.tg.emulate_incoming_message(
             1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"

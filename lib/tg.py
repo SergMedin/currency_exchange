@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 import asyncio
 import dataclasses
 import logging
@@ -19,6 +19,8 @@ class TgOutgoingMsg:
     user_id: int
     user_name: str | None
     text: str
+    reply_markup: Optional[str] = None
+    parse_mode: Optional[str] = None
 
 
 OnMessageType = Callable[[TgIncomingMsg], None]
