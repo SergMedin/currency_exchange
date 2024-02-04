@@ -51,13 +51,16 @@ class Main(ExchgController):
             text=tg_start_message,
             parse_mode="Markdown",
             buttons=[
-                [Button("Create order"), Button("My orders", "my_orders")],
+                [
+                    Button("Создать заказ", "create_order"),
+                    Button("My orders", "my_orders"),
+                ],
                 [Button("Statistics", "statistics"), Button("Help", "help")],
             ],
             _session=session,
         )
         self._a2c = {
-            "create order": CreateOrder,
+            "create_order": CreateOrder,
             "my_orders": MyOrders,
             "statistics": Statistics,
             "help": Help,
