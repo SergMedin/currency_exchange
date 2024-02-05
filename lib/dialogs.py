@@ -208,8 +208,23 @@ class EnterRelativeRateStep(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Enter the desired exchange rate relative to the exchange. For example: 1.01 (above the exchange rate by 1%) or 0.98 (below the exchange rate by 2%). Current exchange rate: 4.4628 AMD/RUB",
-            buttons=[[Button("Назад", "back")]],
+            text="Укажите, сколько % прибавть к текущему курсу биржи",
+            buttons=[
+                [Button("Использовать курс биржи", "rel:0")],
+                [
+                    Button("-2.0%", "rel:-2"),
+                    Button("-1.5%", "rel:-1.5"),
+                    Button("-1.0%", "rel:-1"),
+                    Button("-0.5%", "rel:-0.5"),
+                ],
+                [
+                    Button("+0.5%", "rel:0.5"),
+                    Button("+1.0%", "rel:1"),
+                    Button("+1.5%", "rel:1.5"),
+                    Button("+2.0%", "rel:2"),
+                ],
+                [Button("Назад", "back")],
+            ],
         )
 
     def process_event(self, e: Event) -> OutMessage:
@@ -220,7 +235,7 @@ class EnterRelativeRateStep(ExchgController):
                     return OutMessage("Rate have to be > 0") + self.render()
                 assert self.parent is not None
                 assert isinstance(self.parent, EnterPriceStep)
-                self.parent.relative_rate = rate
+                self.parent.relative_rate = rate / Decimal(100) + Decimal(1)
                 return self.close()
             except decimal.InvalidOperation as e:
                 return (
@@ -228,6 +243,12 @@ class EnterRelativeRateStep(ExchgController):
                 )
         elif isinstance(e, ButtonAction):
             if e.name == "back":
+                return self.close()
+            elif e.name.startswith("rel:"):
+                rate = Decimal(e.name.split(":")[1]) / Decimal(100) + Decimal(1)
+                assert self.parent is not None
+                assert isinstance(self.parent, EnterPriceStep)
+                self.parent.relative_rate = rate
                 return self.close()
         raise NotImplementedError()
 
