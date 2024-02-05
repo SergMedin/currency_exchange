@@ -49,6 +49,7 @@ class OutMessage:
     buttons: list[list[Button]] = field(default_factory=list)
     next: Optional["OutMessage"] = None
     parse_mode: Optional[str] = None
+    buttons_below: list[list[Button]] = field(default_factory=list)
 
     def __add__(self, other: "OutMessage") -> "OutMessage":
         return OutMessage(self.text, self.buttons, other)
@@ -60,6 +61,7 @@ class Controller:
     child: Optional["Controller"] = None
     text: Optional[str] = ""
     buttons: list[list[Button]] = field(default_factory=list)
+    buttons_below: list[list[Button]] = field(default_factory=list)
     parse_mode: Optional[str] = None
 
     def process_event(self, e: Event) -> OutMessage:
@@ -70,7 +72,10 @@ class Controller:
             return self.child.render()
         else:
             return OutMessage(
-                self.text if self.text else "", self.buttons, parse_mode=self.parse_mode
+                self.text if self.text else "",
+                self.buttons,
+                parse_mode=self.parse_mode,
+                buttons_below=self.buttons_below,
             )
 
     def show_child(self, child: "Controller") -> OutMessage:

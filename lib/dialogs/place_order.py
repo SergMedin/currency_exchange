@@ -52,6 +52,7 @@ class ChooseOrderTypeStep(ExchgController):
 @dataclass
 class EnterAmountStep(ExchgController):
     amount: Decimal | None = None
+    CANCEL_LABEL = "Отмена"
 
     def __init__(self, parent: Controller, order_type: OrderType):
         text = (
@@ -62,12 +63,15 @@ class EnterAmountStep(ExchgController):
         super().__init__(
             parent=parent,
             text=text,
-            buttons=[[Button("Cancel", "cancel")]],
+            buttons_below=[[Button(self.CANCEL_LABEL, "cancel")]],
         )
         self.order_type = order_type
 
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, Message):
+            if e.text == self.CANCEL_LABEL:
+                assert self.parent is not None and isinstance(self.parent, CreateOrder)
+                return self.parent.cancel()
             try:
                 amount = Decimal(e.text)
                 if amount <= 0:
@@ -81,11 +85,10 @@ class EnterAmountStep(ExchgController):
                     OutMessage("Amount should be a valid decimal number")
                     + self.render()
                 )
-        elif isinstance(e, ButtonAction):
-            if e.name == "cancel":
-                assert self.parent is not None and isinstance(self.parent, CreateOrder)
-                return self.parent.cancel()
         raise NotImplementedError()
+
+    def cancel(self):
+        return self.close()
 
 
 @dataclass

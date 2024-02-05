@@ -254,11 +254,16 @@ class Application:
                 out = top.process_event(Message(m.user_id, text=m.text))
 
         while out:
+            reply_markup = None
+            if out.buttons_below:
+                reply_markup = [[b.text for b in line] for line in out.buttons_below]
+
             self._send_message(
                 m.user_id,
                 m.user_name,
                 out.text,
                 parse_mode=out.parse_mode,
+                reply_markup=reply_markup,
                 inline_keyboard=out.buttons,
             )
             out = out.next
