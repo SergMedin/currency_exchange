@@ -104,7 +104,7 @@ class ChooseOrderTypeStep(ExchgController):
             parent=parent,
             text="Choose the type of order",
             buttons=[
-                [Button("RUB -> AMD", "rub_amd"), Button("AMD -> RUB", "amd_rub")],
+                [Button("RUB ➡️ AMD", "rub_amd"), Button("AMD ➡️ RUB", "amd_rub")],
                 [Button("Cancel", "cancel")],
             ],
         )
@@ -309,7 +309,7 @@ class ConfirmOrderStep(ExchgController):
             text=f"Подтвердите параметры заказа: {parent.order.type} {parent.order.amount} RUB * {parent.order.price} AMD",
             buttons=[
                 [Button("Всё ок, разместить заказ", "place_order")],
-                [Button("Указать мин. сумму", "set_min_op_threshold")],
+                [Button("Указать мин. сумму сделки", "set_min_op_threshold")],
                 [Button("Задать время жизни", "set_lifetime")],
                 [Button("Cancel", "cancel")],
             ],
@@ -384,7 +384,7 @@ class CreateOrder(ExchgController):
                     relative_rate=order.relative_rate,
                 )
                 self.session.exchange.on_new_order(o)
-                return self.close()
+                return OutMessage("Поздравляем! Ваш заказ размещен") + self.close()
         logging.error(f"Unknown child: {child}, {child.__class__}")
         raise NotImplementedError()
 
