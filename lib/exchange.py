@@ -51,6 +51,7 @@ class Exchange:
             raise ValueError("Order lifetime cannot exceed 48 hours")
 
         o = self._db.store_order(o)
+        self._update_prices()  # FIXME: workaround to not to force clients to calculate prices
         if o._id is None:
             raise ValueError("Order ID is None")
         self._log("new", o)

@@ -198,7 +198,7 @@ class EnterPriceStep(ExchgController):
     def on_child_closed(self, child: Controller) -> OutMessage:
         if isinstance(child, EnterRelativeRateStep):
             if self.relative_rate:
-                self.close()
+                return self.close()
         return self.render()
 
 
@@ -362,7 +362,11 @@ class CreateOrder(ExchgController):
                 order = self.order
                 assert order.type is not None
                 assert order.amount is not None
-                assert order.price is not None
+                assert order.price is not None or order.relative_rate is not None
+                if order.price is None:
+                    order.price = Decimal(
+                        1
+                    )  # FIXME: workaround broken exchange interface
                 order.min_op_threshold = (
                     order.amount
                     if child.min_op_threshold is None
