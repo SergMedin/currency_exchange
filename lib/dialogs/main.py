@@ -61,7 +61,7 @@ class Main(ExchgController):
         elif isinstance(e, Message):
             if e.text.lower() == "help":
                 return self.show_child(Help(self))
-            raise ValueError(f"Unknown message: {e.text}")
+            return OutMessage(f"Unknown message: {e.text}") + self.render()
         elif isinstance(e, ButtonAction):
             name = e.name.lower()
             try:

@@ -188,11 +188,11 @@ class EnterRelativeRateStep(ExchgController):
 
 class SetMinOpThresholdStep(ExchgController):
 
-    def __init__(self, parent: Controller):
-        assert parent is not None and isinstance(parent, ConfirmOrderStep)
+    def __init__(self, parent: Controller, draft: _OrderDraft):
+        self._draft = draft
         super().__init__(
             parent=parent,
-            text="Укажите минимальную сумму для операции",
+            text=f"Укажите минимальную сумму для операции <= {draft.amount} RUB",
             buttons=[
                 [Button("Вся сумма", "all-in")],
                 [Button("Назад", "back")],
@@ -205,10 +205,7 @@ class SetMinOpThresholdStep(ExchgController):
                 min_op_threshold = Decimal(e.text)
                 if min_op_threshold <= 0:
                     return OutMessage("Min op threshold have to be > 0") + self.render()
-                assert self.parent is not None and isinstance(
-                    self.parent, ConfirmOrderStep
-                )
-                self.parent.min_op_threshold = min_op_threshold
+                self._draft.min_op_threshold = min_op_threshold
                 return self.close()
             except decimal.InvalidOperation as e:
                 return (
@@ -219,13 +216,7 @@ class SetMinOpThresholdStep(ExchgController):
             if e.name == "back":
                 return self.close()
             elif e.name == "all-in":
-                assert self.parent is not None and isinstance(
-                    self.parent, ConfirmOrderStep
-                )
-                assert self.parent.parent is not None and isinstance(
-                    self.parent.parent, CreateOrder
-                )
-                self.parent.min_op_threshold = self.parent.parent.order.amount
+                self._draft.min_op_threshold = self._draft.amount
                 return self.close()
         raise NotImplementedError()
 
@@ -259,20 +250,18 @@ class SetLifetimeStep(ExchgController):
         elif isinstance(e, ButtonAction):
             if e.name == "back":
                 return self.close()
-        raise NotImplementedError()
+        return self.close()
 
 
 @dataclass
 class ConfirmOrderStep(ExchgController):
     confirmed: bool = False
-    min_op_threshold: Decimal | None = None
     lifetime_sec: int | None = None
 
     def __init__(self, parent: Controller):
-        assert parent is not None and isinstance(parent, CreateOrder)
         super().__init__(
             parent=parent,
-            text=f"Подтвердите параметры заказа: {parent.order.type} {parent.order.amount} RUB * {parent.order.price} AMD",
+            text="",
             buttons=[
                 [Button("Всё ок, разместить заказ", "place_order")],
                 [Button("Указать мин. сумму сделки", "set_min_op_threshold")],
@@ -280,6 +269,34 @@ class ConfirmOrderStep(ExchgController):
                 [Button("Cancel", "cancel")],
             ],
         )
+
+    def render(self) -> OutMessage:
+        parent = self.parent
+        assert parent is not None and isinstance(parent, CreateOrder)
+        assert parent.order.type is not None
+
+        lines = []
+        lines.append("*Подтвердите параметры заказа:*")
+        lines.append(f"- Тип: {parent.order.type.name}")
+        lines.append(f"- Сумма: {parent.order.amount} RUB")
+        if parent.order.price is not None:
+            lines.append(f"- Курс: {parent.order.price} AMD")
+        else:
+            lines.append(f"- Относительный курс: {parent.order.relative_rate}")
+        lines.append(
+            f"- Мин. сумма сделки: любая"
+            if parent.order.min_op_threshold is None
+            else f"- Мин. сумма сделки: {parent.order.min_op_threshold}"
+        )
+        lines.append(
+            f"- Время жизни: {parent.order.lifetime_sec // 3600} часов"
+            if parent.order.lifetime_sec is not None
+            else "- Время жизни: 48 часов"
+        )
+        m = super().render()
+        m.text = "\n".join(lines)
+        m.parse_mode = "Markdown"
+        return m
 
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, ButtonAction):
@@ -290,7 +307,8 @@ class ConfirmOrderStep(ExchgController):
                 self.confirmed = True
                 return self.close()
             elif e.name == "set_min_op_threshold":
-                return self.show_child(SetMinOpThresholdStep(self))
+                assert self.parent is not None and isinstance(self.parent, CreateOrder)
+                return self.show_child(SetMinOpThresholdStep(self, self.parent.order))
             elif e.name == "set_lifetime":
                 return self.show_child(SetLifetimeStep(self))
         raise NotImplementedError()
@@ -333,10 +351,9 @@ class CreateOrder(ExchgController):
                     order.price = Decimal(
                         1
                     )  # FIXME: workaround broken exchange interface
-                order.min_op_threshold = (
-                    order.amount
-                    if child.min_op_threshold is None
-                    else child.min_op_threshold
+                assert (
+                    order.min_op_threshold is None
+                    or order.min_op_threshold <= order.amount
                 )
                 order.lifetime_sec = (
                     48 * 60 * 60 if child.lifetime_sec is None else child.lifetime_sec
@@ -349,7 +366,11 @@ class CreateOrder(ExchgController):
                     type=order.type,
                     amount_initial=order.amount,
                     price=order.price,
-                    min_op_threshold=order.min_op_threshold,
+                    min_op_threshold=(
+                        order.min_op_threshold
+                        if order.min_op_threshold
+                        else Decimal(0.0)
+                    ),
                     lifetime_sec=order.lifetime_sec,
                     relative_rate=order.relative_rate,
                 )
