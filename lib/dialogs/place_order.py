@@ -193,7 +193,10 @@ class SetMinOpThresholdStep(ExchgController):
         super().__init__(
             parent=parent,
             text="Укажите минимальную сумму для операции",
-            buttons=[[Button("Назад", "back")]],
+            buttons=[
+                [Button("Вся сумма", "all-in")],
+                [Button("Назад", "back")],
+            ],
         )
 
     def process_event(self, e: Event) -> OutMessage:
@@ -214,6 +217,15 @@ class SetMinOpThresholdStep(ExchgController):
                 )
         elif isinstance(e, ButtonAction):
             if e.name == "back":
+                return self.close()
+            elif e.name == "all-in":
+                assert self.parent is not None and isinstance(
+                    self.parent, ConfirmOrderStep
+                )
+                assert self.parent.parent is not None and isinstance(
+                    self.parent.parent, CreateOrder
+                )
+                self.parent.min_op_threshold = self.parent.parent.order.amount
                 return self.close()
         raise NotImplementedError()
 
