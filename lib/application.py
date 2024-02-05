@@ -18,7 +18,7 @@ from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMoc
 from .config import ORDER_LIFETIME_LIMIT
 
 from bootshop.stories import OutMessage, Command, Message, ButtonAction, Button
-from lib import dialogs
+from . import dialogs
 from .lazy_load import LazyMessageLoader
 
 
@@ -135,14 +135,21 @@ class Application:
         self._sessions2: dict[int, dialogs.Main] = {}
 
         self.start_message_loader = LazyMessageLoader(
-            os.path.join(os.path.dirname(__file__), "tg_messages", "start_message.md")
+            os.path.join(
+                os.path.dirname(__file__), "dialogs", "tg_messages", "start_message.md"
+            )
         )
         self.help_message_loader = LazyMessageLoader(
-            os.path.join(os.path.dirname(__file__), "tg_messages", "help_message.md")
+            os.path.join(
+                os.path.dirname(__file__), "dialogs", "tg_messages", "help_message.md"
+            )
         )
         self.disclaimer_message_loader = LazyMessageLoader(
             os.path.join(
-                os.path.dirname(__file__), "tg_messages", "disclaimer_message.md"
+                os.path.dirname(__file__),
+                "dialogs",
+                "tg_messages",
+                "disclaimer_message.md",
             )
         )
 

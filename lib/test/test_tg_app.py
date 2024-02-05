@@ -134,7 +134,7 @@ class TestTgApp(unittest.TestCase):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
         self.assertEqual(1, len(self.tg.outgoing))
         self.assertEqual("Joe", self.tg.outgoing[0].user_name)
-        with open("./lib/tg_messages/start_message.md", "r") as f:
+        with open("./lib/dialogs/tg_messages/start_message.md", "r") as f:
             tg_start_message = f.read().strip()
         self.assertEqual(tg_start_message, self.tg.outgoing[0].text)
 
@@ -189,7 +189,7 @@ class TestTGAppSM(unittest.TestCase):
     def _bot_start(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
         self.assertEqual("Joe", self.tg.outgoing[-1].user_name)
-        with open("./lib/tg_messages/start_message.md", "r") as f:
+        with open("./lib/dialogs/tg_messages/start_message.md", "r") as f:
             tg_start_message = f.read().strip()
         self.assertEqual(tg_start_message, self.tg.outgoing[-1].text)
 
