@@ -65,7 +65,7 @@ class Controller:
     parse_mode: Optional[str] = None
 
     def process_event(self, e: Event) -> OutMessage:
-        raise NotImplementedError()
+        return self.render()
 
     def render(self) -> OutMessage:
         if self.child:
