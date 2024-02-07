@@ -32,9 +32,12 @@ class ChooseOrderTypeStep(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Choose the type of order",
+            text="Выберите тип заказа: покупка или продажа рублей",
             buttons=[
-                [Button("RUB ➡️ AMD", "rub_amd"), Button("AMD ➡️ RUB", "amd_rub")],
+                [
+                    Button("Продать RUB → AMD", "rub_amd"),
+                    Button("Купить RUB ← AMD", "amd_rub"),
+                ],
                 [Button("Cancel", "cancel")],
             ],
         )
@@ -44,7 +47,7 @@ class ChooseOrderTypeStep(ExchgController):
             if e.name == "cancel":
                 assert self.parent is not None and isinstance(self.parent, CreateOrder)
                 return self.parent.cancel()
-            self.order_type = OrderType.BUY if e.name == "rub_amd" else OrderType.SELL
+            self.order_type = OrderType.BUY if e.name == "amd_rub" else OrderType.SELL
             return self.close()
         raise NotImplementedError()
 
@@ -56,9 +59,9 @@ class EnterAmountStep(ExchgController):
 
     def __init__(self, parent: Controller, order_type: OrderType):
         text = (
-            "How much RUB do you want to exchange?"
-            if order_type == OrderType.BUY
-            else "How much AMD do you want to exchange?"
+            "Сколько рублей продаете?"
+            if order_type == OrderType.SELL
+            else "Сколько рублей хотите купить?"
         )
         super().__init__(
             parent=parent,
@@ -279,12 +282,16 @@ class ConfirmOrderStep(ExchgController):
         assert parent is not None and isinstance(parent, CreateOrder)
         assert parent.order.type is not None
 
+        type_name_rus = {"BUY": "покупка", "SELL": "продажа"}.get(
+            parent.order.type.name, parent.order.type.name
+        )
+
         lines = []
         lines.append("*Подтвердите параметры заказа:*")
-        lines.append(f"- Тип: {parent.order.type.name}")
+        lines.append(f"- Тип: {type_name_rus} рублей")
         lines.append(f"- Сумма: {parent.order.amount} RUB")
         if parent.order.price is not None:
-            lines.append(f"- Курс: {parent.order.price} AMD")
+            lines.append(f"- Курс: 1 RUB = {parent.order.price} AMD")
         else:
             lines.append(f"- Относительный курс: {parent.order.relative_rate}")
         lines.append(
