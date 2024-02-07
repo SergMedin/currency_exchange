@@ -272,7 +272,7 @@ class ConfirmOrderStep(ExchgController):
             buttons=[
                 [Button("Всё ок, разместить заказ", "place_order")],
                 [Button("Указать мин. сумму сделки", "set_min_op_threshold")],
-                [Button("Задать время жизни", "set_lifetime")],
+                # [Button("Задать время жизни", "set_lifetime")],
                 [Button("Cancel", "cancel")],
             ],
         )
@@ -370,7 +370,7 @@ class CreateOrder(ExchgController):
                 except AssertionError as e:
                     return OutMessage(f"{e}") + self.show_child(ConfirmOrderStep(self))
                 order.lifetime_sec = (
-                    48 * 60 * 60 if child.lifetime_sec is None else child.lifetime_sec
+                    7 * 24 * 60 * 60 if child.lifetime_sec is None else child.lifetime_sec # Fixme: hardcoded value
                 )
                 if order.relative_rate is None:
                     order.relative_rate = Decimal(-1.0)
