@@ -765,13 +765,13 @@ class Application:
         seller_id = m.sell_order.user.id
         seller_name = m.sell_order.user.name
         message_buyer = (
-            f"Go and buy {m.amount} RUB from @{seller_name} for {m.price} per unit (you should send"
-            f" {m.price * m.amount:.2f} AMD, you will get {m.amount:.2f} RUB)"
+            f"Вы можете приобрести {m.amount} RUB у @{seller_name} по цене {m.price} за единицу (вы должны отправить"
+            f" {m.price * m.amount:.2f} AMD, вы получите {m.amount:.2f} RUB)"
             f"\n\n{self.disclaimer_message_loader.message}"
         )
         message_seller = (
-            f"You should sell {m.amount} RUB to @{buyer_name} for {m.price} per unit (you should send"
-            f" {m.amount:.2f} RUB, you will get {m.price * m.amount:.2f} AMD)"
+            f"Вы можете продать {m.amount} RUB @{buyer_name} по цене {m.price} за единицу (вы должны отправить"
+            f" {m.amount:.2f} RUB, вы получите {m.price * m.amount:.2f} AMD)"
             f"\n\n{self.disclaimer_message_loader.message}"
         )
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))

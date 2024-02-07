@@ -1,5 +1,5 @@
-Welcome to the exchange service! This bot assists with RUB/AMD currency pair transactions. It matches orders and notifies users for potential exchanges.
+Добро пожаловать в сервис обмена валюты! Этот бот помогает сделать операции по обмену валюты RUB/AMD. Он сопоставляет заказы и уведомляет пользователей о возможных обменах.
 
-*Disclaimer*: Use the bot for informational purposes only. All responsibility for conducting transactions remains with you. The bot may contain errors, so please verify the amount and the recipient of the funds before proceeding with any transaction!
+*Отказ от ответственности*: Используйте бота только в информационных целях. Вся ответственность за проведение операций остается на вас. Бот может содержать ошибки, поэтому, пожалуйста, перед совершением любой операции проверьте сумму и получателя средств!
 
-For detailed instructions on creating orders, listing them, and more, use the /help command.
+Для получения подробных инструкций используйте команду /help или кнопку "Помощь".

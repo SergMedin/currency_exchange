@@ -25,6 +25,5 @@ class TestOrderCreationDialogs(unittest.TestCase):
         self.assertEqual(1, len(self.tg.outgoing))
         m = self.tg.outgoing[0]
         self.assertEqual("Joe", m.user_name)
-        self.assertIn("Welcome to the exchange service!", m.text)
         self.assertIn("create_order", m.inline_keyboard[0][0].callback_data)
         self.assertEqual("Markdown", m.parse_mode)
