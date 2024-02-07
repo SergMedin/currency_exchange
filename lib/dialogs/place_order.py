@@ -38,7 +38,7 @@ class ChooseOrderTypeStep(ExchgController):
                     Button("Продать RUB → AMD", "rub_amd"),
                     Button("Купить RUB ← AMD", "amd_rub"),
                 ],
-                [Button("Cancel", "cancel")],
+                [Button("Отмена", "cancel")],
             ],
         )
 
@@ -78,14 +78,14 @@ class EnterAmountStep(ExchgController):
             try:
                 amount = Decimal(e.text)
                 if amount <= 0:
-                    return OutMessage("Amount have to be > 0") + self.render()
+                    return OutMessage("Сумма должна быть более 0") + self.render()
                 assert self.parent is not None
                 assert isinstance(self.parent, CreateOrder)
                 self.amount = amount
                 return self.close()
             except decimal.InvalidOperation as e:
                 return (
-                    OutMessage("Amount should be a valid decimal number")
+                    OutMessage("Сумма должна быть задана числом")
                     + self.render()
                 )
         elif isinstance(e, ButtonAction):
@@ -109,7 +109,7 @@ class EnterPriceStep(ExchgController):
             text="Введите курс или выберите опцию 'Относительный курс' чтобы ввести относительный курс",
             buttons=[
                 [Button("Относительный курс", "relative")],
-                [Button("Cancel", "cancel")],
+                [Button("Отмена", "cancel")],
             ],
         )
 
@@ -118,14 +118,14 @@ class EnterPriceStep(ExchgController):
             try:
                 price = Decimal(e.text)
                 if price <= 0:
-                    return OutMessage("Price have to be > 0") + self.render()
+                    return OutMessage("Курс обмена должен быть больше 0") + self.render()
                 assert self.parent is not None
                 assert isinstance(self.parent, CreateOrder)
                 self.price = price
                 return self.close()
             except decimal.InvalidOperation as e:
                 return (
-                    OutMessage("Price should be a valid decimal number") + self.render()
+                    OutMessage("Курс обмена должен быть числом") + self.render()
                 )
         elif isinstance(e, ButtonAction):
             if e.name == "cancel":
@@ -148,7 +148,7 @@ class EnterRelativeRateStep(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Укажите, сколько % прибавть к текущему курсу биржи",
+            text="Укажите относительный курс биржи в процентах",
             buttons=[
                 [Button("Использовать курс биржи", "rel:0")],
                 [
@@ -171,15 +171,13 @@ class EnterRelativeRateStep(ExchgController):
         if isinstance(e, Message):
             try:
                 rate = Decimal(e.text)
-                if rate <= 0:
-                    return OutMessage("Rate have to be > 0") + self.render()
                 assert self.parent is not None
                 assert isinstance(self.parent, EnterPriceStep)
                 self.parent.relative_rate = rate / Decimal(100) + Decimal(1)
                 return self.close()
             except decimal.InvalidOperation as e:
                 return (
-                    OutMessage("Rate should be a valid decimal number") + self.render()
+                    OutMessage("Процент должен быть задан числом, например 1.5") + self.render()
                 )
         elif isinstance(e, ButtonAction):
             if e.name == "back":
@@ -211,12 +209,12 @@ class SetMinOpThresholdStep(ExchgController):
             try:
                 min_op_threshold = Decimal(e.text)
                 if min_op_threshold <= 0:
-                    return OutMessage("Min op threshold have to be > 0") + self.render()
+                    return OutMessage("Размер минимальной транзакции должен быть больше 0") + self.render()
                 self._draft.min_op_threshold = min_op_threshold
                 return self.close()
             except decimal.InvalidOperation as e:
                 return (
-                    OutMessage("Min op threshold should be a valid decimal number")
+                    OutMessage("Размер минимальной транзакции должен быть задан числом")
                     + self.render()
                 )
         elif isinstance(e, ButtonAction):
@@ -243,7 +241,7 @@ class SetLifetimeStep(ExchgController):
             try:
                 lifetime_sec = int(e.text) * 3600
                 if lifetime_sec <= 0:
-                    return OutMessage("Lifetime have to be > 0") + self.render()
+                    return OutMessage("Время жизни заявки должно быть больше 0") + self.render()
                 assert self.parent is not None and isinstance(
                     self.parent, ConfirmOrderStep
                 )
@@ -251,7 +249,7 @@ class SetLifetimeStep(ExchgController):
                 return self.close()
             except ValueError as e:
                 return (
-                    OutMessage("Lifetime should be a valid integer number")
+                    OutMessage("Время жизни заявки должно быть задано целым числом")
                     + self.render()
                 )
         elif isinstance(e, ButtonAction):
@@ -273,7 +271,7 @@ class ConfirmOrderStep(ExchgController):
                 [Button("Всё ок, разместить заказ", "place_order")],
                 [Button("Указать мин. сумму сделки", "set_min_op_threshold")],
                 # [Button("Задать время жизни", "set_lifetime")],
-                [Button("Cancel", "cancel")],
+                [Button("Отмена", "cancel")],
             ],
         )
 
@@ -293,16 +291,17 @@ class ConfirmOrderStep(ExchgController):
         if parent.order.price is not None:
             lines.append(f"- Курс: 1 RUB = {parent.order.price} AMD")
         else:
-            lines.append(f"- Относительный курс: {parent.order.relative_rate}")
+            assert parent.order.relative_rate is not None
+            lines.append(f"- Относительный курс: {parent.order.relative_rate - 1 :.2%}")
         lines.append(
             f"- Мин. сумма сделки: любая"
             if parent.order.min_op_threshold is None
             else f"- Мин. сумма сделки: {parent.order.min_op_threshold}"
         )
         lines.append(
-            f"- Время жизни: {parent.order.lifetime_sec // 3600} часов"
+            f"- Время жизни заявки: {parent.order.lifetime_sec // 3600} часов"
             if parent.order.lifetime_sec is not None
-            else "- Время жизни: 48 часов"
+            else "- Время жизни заявки: 30 суток" # FIXME: hardcoded value
         )
         m = super().render()
         m.text = "\n".join(lines)
@@ -330,9 +329,9 @@ class CreateOrder(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Not supported yet",
+            text="Не поддерживается",
             buttons=[
-                [Button("Back")],
+                [Button("Назад", "back")],
             ],
         )
         self.order = _OrderDraft()
@@ -355,7 +354,7 @@ class CreateOrder(ExchgController):
         elif isinstance(child, ConfirmOrderStep):
             if child.confirmed:
                 order = self.order
-                try:
+                try: # FIXME
                     assert order.type is not None
                     assert order.amount is not None
                     assert order.price is not None or order.relative_rate is not None
@@ -370,7 +369,7 @@ class CreateOrder(ExchgController):
                 except AssertionError as e:
                     return OutMessage(f"{e}") + self.show_child(ConfirmOrderStep(self))
                 order.lifetime_sec = (
-                    7 * 24 * 60 * 60 if child.lifetime_sec is None else child.lifetime_sec # Fixme: hardcoded value
+                    30 * 24 * 60 * 60 if child.lifetime_sec is None else child.lifetime_sec # Fixme: hardcoded value
                 )
                 if order.relative_rate is None:
                     order.relative_rate = Decimal(-1.0)
@@ -388,10 +387,10 @@ class CreateOrder(ExchgController):
                     lifetime_sec=order.lifetime_sec,
                     relative_rate=order.relative_rate,
                 )
-                try:
+                try: # FIXME
                     self.session.exchange.on_new_order(o)
                 except Exception as e:
-                    return OutMessage(f"Failed to place order: {e}") + self.show_child(
+                    return OutMessage(f"Ошибка размещения заказа: {e}") + self.show_child(
                         ConfirmOrderStep(self)
                     )
                 return OutMessage("Поздравляем! Ваш заказ размещен") + self.close()
