@@ -355,17 +355,20 @@ class CreateOrder(ExchgController):
         elif isinstance(child, ConfirmOrderStep):
             if child.confirmed:
                 order = self.order
-                assert order.type is not None
-                assert order.amount is not None
-                assert order.price is not None or order.relative_rate is not None
-                if order.price is None:
-                    order.price = Decimal(
-                        1
-                    )  # FIXME: workaround broken exchange interface
-                assert (
-                    order.min_op_threshold is None
-                    or order.min_op_threshold <= order.amount
-                )
+                try:
+                    assert order.type is not None
+                    assert order.amount is not None
+                    assert order.price is not None or order.relative_rate is not None
+                    if order.price is None:
+                        order.price = Decimal(
+                            1
+                        )  # FIXME: workaround broken exchange interface
+                    assert (
+                        order.min_op_threshold is None
+                        or order.min_op_threshold <= order.amount
+                    )
+                except AssertionError as e:
+                    return OutMessage(f"{e}") + self.show_child(ConfirmOrderStep(self))
                 order.lifetime_sec = (
                     48 * 60 * 60 if child.lifetime_sec is None else child.lifetime_sec
                 )
@@ -385,7 +388,12 @@ class CreateOrder(ExchgController):
                     lifetime_sec=order.lifetime_sec,
                     relative_rate=order.relative_rate,
                 )
-                self.session.exchange.on_new_order(o)
+                try:
+                    self.session.exchange.on_new_order(o)
+                except Exception as e:
+                    return OutMessage(f"Failed to place order: {e}") + self.show_child(
+                        ConfirmOrderStep(self)
+                    )
                 return OutMessage("Поздравляем! Ваш заказ размещен") + self.close()
         logging.error(f"Unknown child: {child}, {child.__class__}")
         raise NotImplementedError()
