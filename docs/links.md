@@ -1,0 +1,3 @@
+- Team: [kanban-board](https://github.com/users/SergMedin/projects/1/views/1) | [Miro](https://miro.com/app/board/uXjVN7OtQDE=/?moveToWidget=3458764577854723142&cot=14) | [Zoom](https://us04web.zoom.us/j/71792004989?pwd=vvvi00mCAOgIQ1JD24pLdSib4p9vUI.1)
+- [DevBot](https://t.me/currency_exchange_av_bot) | [ProductionBot](https://t.me/cur_exchange_av_bot) | [OrdersTable](https://docs.google.com/spreadsheets/d/1k8yMmPNPwvyeknaGV0MGrVI2gfPFZ4hgH0yq-44xNJU/edit?pli=1#gid=0) | [FinModel](https://docs.google.com/spreadsheets/d/12KRLYmSeDn4t5Y1johQ_anUijkRD0Kl6Pi88Xde4H-k/edit#gid=1394893947) | [Reposistory](https://github.com/SergMedin/currency_exchange)
+- Server: 142.93.169.137
