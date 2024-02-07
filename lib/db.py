@@ -1,4 +1,5 @@
 from typing import Callable
+from decimal import Decimal
 from .data import Order
 
 
@@ -16,4 +17,10 @@ class Db:
         raise NotImplementedError()
 
     def iterate_orders(self, callback: Callable[[Order], None]):
+        raise NotImplementedError()
+
+    def get_last_match_price(self) -> Decimal | None:
+        raise NotImplementedError()
+
+    def store_last_match_price(self, price: Decimal):
         raise NotImplementedError()

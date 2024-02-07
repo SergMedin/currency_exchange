@@ -1,6 +1,6 @@
 import threading
 import unittest
-from typing import Any, Tuple, Dict, List
+from typing import Any, Tuple, Dict, List, Optional
 import dataclasses
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -10,14 +10,20 @@ class GSpreadsTable:
     _gapi_lock = threading.RLock()
     _gapi_client = None
     _gapi_tables: dict[str, Any] = {}
-    _gapi_credentials_filepath: str = None
+    _gapi_credentials_filepath: Optional[str] = None
 
-    def __init__(self, credentials_filepath, table_key, sheet_title: str = None):
+    def __init__(
+        self, credentials_filepath, table_key, sheet_title: Optional[str] = None
+    ):
         # assert sheet_title is not None  # Andrey asked to remove this assert
         with self.__class__._gapi_lock:
             self.__class__._gapi_credentials_filepath = credentials_filepath
             self.table = self._get_table(table_key)
-            self.sheet = self.table.sheet1 if sheet_title is None else self.table.worksheet(sheet_title)
+            self.sheet = (
+                self.table.sheet1
+                if sheet_title is None
+                else self.table.worksheet(sheet_title)
+            )
 
     def update_cell(self, row: int, col: int, val: str):
         with self.__class__._gapi_lock:
@@ -51,8 +57,13 @@ class GSpreadsTable:
     def _get_table(cls, table_key):
         with cls._gapi_lock:
             if not cls._gapi_client:
-                scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/drive']
-                creds = ServiceAccountCredentials.from_json_keyfile_name(cls._gapi_credentials_filepath, scope)
+                scope = [
+                    "https://spreadsheets.google.com/feeds",
+                    "https://www.googleapis.com/auth/drive",
+                ]
+                creds = ServiceAccountCredentials.from_json_keyfile_name(
+                    cls._gapi_credentials_filepath, scope
+                )
                 cls._gapi_client = gspread.authorize(creds)
             if table_key not in cls._gapi_tables:
                 cls._gapi_tables[table_key] = cls._gapi_client.open_by_key(table_key)
@@ -69,8 +80,8 @@ class _Cell:
 
 class GSpreadsTableMock:
     def __init__(self):
-        self._d: Dict[Tuple[int, int], _Cell] = {}
-        self._sheets: List[str] = ['Sheet1']
+        self._d: Dict[Tuple[int, int], _Cell] = {}  # type: ignore
+        self._sheets: List[str] = ["Sheet1"]  # type: ignore
 
     def update_cell(self, row: int, col: int, val: str):
         assert isinstance(row, int)
@@ -123,13 +134,12 @@ class GSpreadsTableMock:
             return []
         mrow = max(rows)
         res = []
-        for row in range(1, mrow+2):
+        for row in range(1, mrow + 2):
             res.append(self.cell(row, col))
         return res
 
 
 class TestGspreadMock(unittest.TestCase):
-
     def test_simple(self):
         m = GSpreadsTableMock()
         m.update("A1", [["sell", "cow", "2"]])

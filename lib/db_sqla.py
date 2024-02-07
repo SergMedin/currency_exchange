@@ -70,7 +70,7 @@ class SqlDb(Db):
             session.add(last_match_price)
             session.commit()
 
-    def get_last_match_price(self) -> Decimal:
+    def get_last_match_price(self) -> Decimal | None:
         with Session(self._eng) as session:
             last_match_price = session.query(_DbLastMatchPrice).one_or_none()
             if last_match_price is None:
@@ -114,8 +114,8 @@ _ValueConvertFunctionType = Callable[
 class _Field:
     do_name: str
     db_name: str
-    do2db: _ValueConvertFunctionType = None
-    db2do: _ValueConvertFunctionType = None
+    do2db: _ValueConvertFunctionType | None = None
+    db2do: _ValueConvertFunctionType | None = None
     is_id: bool = False
 
 
@@ -202,7 +202,9 @@ class _T(unittest.TestCase):
         self.db = SqlDb()
 
     def test_store_order(self):
-        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60)
+        o = Order(
+            User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+        )
         o = self.db.store_order(o)
         self.assertEqual(OrderType.SELL, o.type)
 
@@ -222,15 +224,31 @@ class _T(unittest.TestCase):
         self.assertEqual(Decimal("50.1"), o.price)
 
     def test_iterate(self):
-        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
-        self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.db.store_order(
+            Order(
+                User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+            )
+        )
+        self.db.store_order(
+            Order(
+                User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+            )
+        )
         orders = []
         self.db.iterate_orders(lambda o: orders.append(o))
         self.assertEqual(2, len(orders))
 
     def test_remove(self):
-        self.db.store_order(Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
-        o = self.db.store_order(Order(User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60))
+        self.db.store_order(
+            Order(
+                User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+            )
+        )
+        o = self.db.store_order(
+            Order(
+                User(2), OrderType.BUY, 95.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+            )
+        )
         self.db.remove_order(o._id)
         orders = []
         self.db.iterate_orders(lambda o: orders.append(o))

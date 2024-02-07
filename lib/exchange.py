@@ -1,4 +1,5 @@
-from .config import ORDER_LIFETIME_LIMIT
+from typing import List, Tuple
+import logging
 import time
 import dataclasses
 import unittest
@@ -6,24 +7,31 @@ import zmq
 import pickle
 from decimal import Decimal
 from .db import Db
+from .config import ORDER_LIFETIME_LIMIT
 from . import data
-
-from .logger import get_logger
-
-logger = get_logger(__name__)
 
 
 class Exchange:
     # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
-    def __init__(self, db: Db, currency_client, on_match=None, zmq_orders_log_endpoint=None):
+    def __init__(
+        self, db: Db, currency_client, on_match=None, zmq_orders_log_endpoint=None
+    ):
         self._db = db
         self._on_match = on_match
-        orders = []
-        self._log_q = zmq.Context.instance().socket(zmq.PUB) if zmq_orders_log_endpoint else None
+        orders: List[Tuple[int, data.Order]] = []
+        self._log_q = (
+            zmq.Context.instance().socket(zmq.PUB) if zmq_orders_log_endpoint else None
+        )
         if self._log_q:
             self._log_q.bind(zmq_orders_log_endpoint)
-        self._db.iterate_orders(lambda o: orders.append((o._id, o)))
+
+        def add(o: data.Order):
+            if o._id is None:
+                raise ValueError("Order ID is None")
+            orders.append((o._id, o))
+
+        self._db.iterate_orders(add)
         self._orders: dict[int, data.Order] = dict(orders)
         self.last_match_price = self._db.get_last_match_price()
 
@@ -43,13 +51,16 @@ class Exchange:
             raise ValueError("Order lifetime cannot exceed 48 hours")
 
         o = self._db.store_order(o)
+        self._update_prices()  # FIXME: workaround to not to force clients to calculate prices
+        if o._id is None:
+            raise ValueError("Order ID is None")
         self._log("new", o)
         self._orders[o._id] = o
         self._check_order_lifetime()  # Removing expired orders
         self._process_matches()
 
     def list_orders_for_user(self, user: data.User) -> list[data.Order]:
-        return [o for o in self._orders.values() if o.user == user]
+        return [o for o in self._orders.values() if o.user.id == user.id]
 
     def _check_order_lifetime(self) -> None:
         """
@@ -62,8 +73,14 @@ class Exchange:
             None
         """
         current_time = time.time()
-        expired_orders = [o for o in self._orders.values() if (current_time - o.creation_time) > o.lifetime_sec]
+        expired_orders = [
+            o
+            for o in self._orders.values()
+            if (current_time - o.creation_time) > o.lifetime_sec
+        ]
         for o in expired_orders:
+            if o._id is None:
+                continue
             self.remove_order(o._id)
 
     def _update_prices(self) -> None:
@@ -78,8 +95,13 @@ class Exchange:
         """
         self.currency_rate = self.currency_converter.get_rate("RUB", "AMD")
         for order in self._orders.values():
-            if order.relative_rate != -1.0 and order.price != self.currency_rate["rate"] * order.relative_rate:
-                order.price = Decimal(self.currency_rate["rate"] * order.relative_rate).quantize(Decimal("0.0001"))
+            if (
+                order.relative_rate != -1.0
+                and order.price != self.currency_rate["rate"] * order.relative_rate
+            ):
+                order.price = Decimal(
+                    self.currency_rate["rate"] * order.relative_rate
+                ).quantize(Decimal("0.0001"))
                 self._db.update_order(order)
 
     def _process_matches(self) -> None:
@@ -94,7 +116,7 @@ class Exchange:
             key=lambda x: x.creation_time,
         )
 
-        logger.debug(f"S: {sellers}\nB: {buyers}\n")
+        logging.debug(f"S: {sellers}\nB: {buyers}\n")
 
         for seller in sellers:
             for buyer in buyers:
@@ -120,20 +142,26 @@ class Exchange:
                         match_amount,
                     )
 
-                    logger.debug(f"match: {match}")
+                    logging.debug(f"match: {match}")
                     if self._on_match:
                         self._on_match(match)
 
                     # Remove order if amount_left is less than or equal to 0
                     if seller.amount_left <= 0:
+                        assert seller._id is not None
                         self.remove_order(seller._id)
                     else:
-                        seller.min_op_threshold = min(seller.amount_left, seller.min_op_threshold)
+                        seller.min_op_threshold = min(
+                            seller.amount_left, seller.min_op_threshold
+                        )
 
                     if buyer.amount_left <= 0:
+                        assert buyer._id is not None
                         self.remove_order(buyer._id)
                     else:
-                        buyer.min_op_threshold = min(buyer.amount_left, buyer.min_op_threshold)
+                        buyer.min_op_threshold = min(
+                            buyer.amount_left, buyer.min_op_threshold
+                        )
 
                     # If the seller's amount_left is less than or equal to 0, move on to the next seller
                     if seller.amount_left <= 0:  # or buyer.amount_left <= 0:
@@ -189,7 +217,9 @@ class Exchange:
             total_amount_buyers = 0
 
         last_match_price_text = "LAST MATCH PRICE:\n" + (
-            f"{self.last_match_price} AMD/RUB" if self.last_match_price else "No matches yet"
+            f"{self.last_match_price} AMD/RUB"
+            if self.last_match_price
+            else "No matches yet"
         )
 
         return {

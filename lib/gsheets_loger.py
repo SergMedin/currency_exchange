@@ -15,18 +15,21 @@ from .gspreads import GSpreadsTable, GSpreadsTableMock
 
 
 class GSheetsLoger:
-
     def __init__(self, zmq_endpoint: str, spreadsheet_key=None, sheet_title=None):
-        self._curr_row = None
+        self._curr_row: int | None = None
         self._stop_flag = False
         self._sub_sock = zmq.Context.instance().socket(zmq.SUB)
         self._sub_sock.connect(zmq_endpoint)
-        self._sub_sock.setsockopt(zmq.SUBSCRIBE, b'')
-        self._thread: threading.Thread = None
+        self._sub_sock.setsockopt(zmq.SUBSCRIBE, b"")
+        self._thread: threading.Thread | None = None
         if spreadsheet_key:
-            credentials_filepath = os.getenv("GCLOUD_ACC_CREDENTIALS_FILE", "useful-mile-334600-ce60f5954ea9.json")
+            credentials_filepath = os.getenv(
+                "GCLOUD_ACC_CREDENTIALS_FILE", "useful-mile-334600-ce60f5954ea9.json"
+            )
             logging.info("Using GSpreadsTable")
-            self._gst = GSpreadsTable(credentials_filepath, spreadsheet_key, sheet_title)
+            self._gst: GSpreadsTable | GSpreadsTableMock = GSpreadsTable(
+                credentials_filepath, spreadsheet_key, sheet_title
+            )
         else:
             logging.info("Using GSpreadsTableMock")
             self._gst = GSpreadsTableMock()
@@ -50,6 +53,8 @@ class GSheetsLoger:
     def _add_record(self, op: Operation):
         sheet = self._gst
         range_name = f"A{self._curr_row}"
+        if self._curr_row is None:
+            raise ValueError("self._curr_row is None")
         self._curr_row += 1
         o = op.order
         row = [
@@ -59,7 +64,9 @@ class GSheetsLoger:
             o.user.id,
             o.user.name,
             o.type.name,
-            float(o.price),  # FIXME: learn the right way to make correct decimal values in Google Sheets
+            float(
+                o.price
+            ),  # FIXME: learn the right way to make correct decimal values in Google Sheets
             float(o.amount_initial),
             float(o.amount_left),
             float(o.min_op_threshold),
@@ -101,7 +108,7 @@ class GSheetsLoger:
             sockets = dict(poller.poll(100))
             if self._sub_sock in sockets:
                 data = self._sub_sock.recv()
-                op: Operation = pickle.loads(data)
+                op: Operation = pickle.loads(data)  # type: ignore
                 self._add_record(op)
 
 
@@ -111,7 +118,9 @@ class T(unittest.TestCase):
 
     def test_simple(self):
         log = GSheetsLoger("inproc://test")
-        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48*60*60)
+        o = Order(
+            User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+        )
         op = Operation(OperationType.NEW_ORDER, o)
         log._add_record(op)
         t = log._gst
@@ -128,7 +137,9 @@ class T(unittest.TestCase):
         log._curr_row = None
         log._check_and_setup_sheet()
 
-        o = Order(User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48*60*60)
+        o = Order(
+            User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
+        )
         op = Operation(OperationType.NEW_ORDER, o)
         log._add_record(op)
         t = log._gst

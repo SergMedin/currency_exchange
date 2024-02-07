@@ -1,5 +1,6 @@
-import requests
+import requests  # type: ignore
 import threading
+import logging
 from dotenv import load_dotenv
 import os
 from decimal import Decimal
@@ -47,17 +48,15 @@ class CurrencyFreaksClient:
                 response = requests.get(
                     f"https://api.currencyfreaks.com/v2.0/rates/latest?apikey={self.api_key}&symbols=RUB,AMD"
                 )
-                # response.json() :
-                # {'date': '2024-01-21 00:00:00+00', 'base': 'USD', 'rates': {'AMD': '404.741979', 'RUB': '88.386974'}}
                 if response.status_code == 200:
                     self.rates = response.json().get("rates", {})
                     self.date = response.json().get("date", None)
                     return
                 else:
-                    print(f"Error: Response code {response.status_code}")
+                    logging.error(f"Error: Response code {response.status_code}")
             except requests.exceptions.RequestException as e:
-                print(f"Connection error: {e}")
-        print("Error: currency rates update failed")
+                logging.error(f"Connection error: {e}")
+        logging.error("Error: currency rates update failed")
 
     def schedule_rate_update(self):
         timer = RepeatTimer(6 * 60 * 60, self.update_rates)
@@ -80,7 +79,7 @@ class CurrencyConverter:
                 "date": to_rate["date"],
             }
         else:
-            print("Ошибка: не удалось найти курс для одной из валют.")
+            logging.error("Ошибка: не удалось найти курс для одной из валют.")
             return None
 
 
@@ -92,9 +91,9 @@ if __name__ == "__main__":
     converter = CurrencyConverter(currency_client)
     rate = converter.get_rate("RUB", "AMD")
     if rate:
-        print(f"1 RUB = {rate['rate']:.4f} AMD on {rate['date'] }")
+        logging.debug(f"1 RUB = {rate['rate']:.4f} AMD on {rate['date']}")
 
     converter = CurrencyConverter(CurrencyMockClient())
     rate = converter.get_rate("RUB", "AMD")
     if rate:
-        print(f"1 RUB = {rate['rate']:.4f} AMD on {rate['date'] }")
+        logging.debug(f"1 RUB = {rate['rate']:.4f} AMD on {rate['date']}")

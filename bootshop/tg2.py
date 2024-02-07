@@ -1,7 +1,13 @@
 import logging
 import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, ContextTypes, MessageHandler, filters, CallbackQueryHandler
+from telegram.ext import (
+    Application,
+    ContextTypes,
+    MessageHandler,
+    filters,
+    CallbackQueryHandler,
+)
 from lib.tg import Tg, TgIncomingMsg, TgOutgoingMsg
 
 
@@ -19,6 +25,14 @@ class TgReal2(Tg):
     async def _default_handler(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
+        if (
+            update.effective_chat is None
+            or update.effective_chat.username is None
+            or update.message is None
+            or update.message.text is None
+        ):
+            logging.warning(f"got invalid message. Update: {update}")
+            return
         message = TgIncomingMsg(
             update.effective_chat.id,
             update.effective_chat.username,
@@ -29,9 +43,14 @@ class TgReal2(Tg):
         except ValueError as e:
             await update.message.reply_text(f"Error: {str(e)}")
 
-    async def _callback_query_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def _callback_query_handler(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
         logging.info(f"got callback query. Update: {update}")
         query = update.callback_query
+        if query is None:
+            logging.warning(f"got invalid callback query. Update: {update}")
+            return
         # CallbackQueries need to be answered, even if no notification to the user is needed
         # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
         await query.answer()
@@ -49,5 +68,7 @@ class TgReal2(Tg):
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         asyncio.create_task(
-            self.application.bot.send_message(m.user_id, m.text, parse_mode=parse_mode, reply_markup=reply_markup)
+            self.application.bot.send_message(
+                m.user_id, m.text, parse_mode=parse_mode, reply_markup=reply_markup
+            )
         )
