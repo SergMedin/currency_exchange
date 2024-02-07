@@ -10,7 +10,7 @@ class LazyMessageLoader:
     def message(self):
         if self._message is None:
             if os.path.exists(self.file_path) and os.path.isfile(self.file_path):
-                with open(self.file_path, "r") as f:
+                with open(self.file_path, "r", encoding="UTF-8", errors="ignore") as f:
                     self._message = f.read().strip()
             else:
                 raise FileNotFoundError(f"File '{self.file_path}' not found")

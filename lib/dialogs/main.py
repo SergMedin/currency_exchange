@@ -37,9 +37,9 @@ class Main(ExchgController):
             buttons=[
                 [
                     Button("Создать заказ", "create_order"),
-                    Button("My orders", "my_orders"),
+                    Button("Мои заявки", "my_orders"),
                 ],
-                [Button("Statistics", "statistics"), Button("Help", "help")],
+                [Button("Статистика", "statistics"), Button("Помощь", "help")],
             ],
             _session=session,
         )
@@ -61,13 +61,13 @@ class Main(ExchgController):
         elif isinstance(e, Message):
             if e.text.lower() == "help":
                 return self.show_child(Help(self))
-            return OutMessage(f"Unknown message: {e.text}") + self.render()
+            return OutMessage(f"Неизвестная команда: {e.text}") + self.render()
         elif isinstance(e, ButtonAction):
             name = e.name.lower()
             try:
                 child = self._a2c[name](self)
             except KeyError:
-                return OutMessage(f"Unknown option: {e.name}") + self.render()
+                return OutMessage(f"Неизвестная команда: {e.name}") + self.render()
             return self.show_child(child)
         raise NotImplementedError()
 
@@ -76,7 +76,7 @@ class MyOrders(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="My orders",
+            text="Мои заявки",
             buttons=[[Button("Back")]],
         )
 
@@ -87,25 +87,25 @@ class MyOrders(ExchgController):
             User(self.session.user_id, self.session.user_name)
         )
         if not orders:
-            text = "You don't have any active orders"
+            text = "У вас нет активных заявок"
         else:
-            text = "Your orders:\n"
+            text = "Ваши заявки:\n"
             for o in orders:
                 if o.relative_rate == -1.0:
                     text_about_rate = f"{o.price} AMD"
                 else:
                     text_about_rate = (
-                        f"{o.relative_rate} RELATIVE (current value: {o.price} AMD)"
+                        f"{o.relative_rate} Относительный курс (текущее значение: {o.price} AMD)"
                     )
 
                 text += (
                     "\n"
                     f"\tid: {o._id} ({o.type.name} {o.amount_left} RUB * {text_about_rate} "
-                    f"min_amt {o.min_op_threshold} lifetime_h {o.lifetime_sec // 3600} "
-                    f"[until: {self._convert_to_utc(o.creation_time, o.lifetime_sec)}])"
+                    f"минимальный объем {o.min_op_threshold} время жизни {o.lifetime_sec // 3600} "
+                    f"[активно до: {self._convert_to_utc(o.creation_time, o.lifetime_sec)}])"
                 )
 
-            text += "\n\nto remove an order, use /remove <id>"
+            text += "\n\nчтобы удалить заявку, используйте команду /remove <id>"
         m.text = text
         return m
 
@@ -128,7 +128,7 @@ class Statistics(ExchgController):
         super().__init__(
             parent=parent,
             text="",
-            buttons=[[Button("Back")]],
+            buttons=[[Button("Назад", "back")]],
         )
 
     def render(self) -> OutMessage:
@@ -153,7 +153,7 @@ class Help(Controller):
             parent=parent,
             text=text,
             parse_mode="Markdown",
-            buttons=[[Button("Back", "back")]],
+            buttons=[[Button("Назад", "back")]],
         )
 
     def process_event(self, e: Event) -> OutMessage:
