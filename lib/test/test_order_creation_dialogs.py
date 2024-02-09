@@ -22,8 +22,8 @@ class TestOrderCreationDialogs(unittest.TestCase):
 
     def test_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
-        self.assertEqual(1, len(self.tg.outgoing))
-        m = self.tg.outgoing[0]
+        self.assertEqual(2, len(self.tg.outgoing))
+        m = self.tg.outgoing[1]
         self.assertEqual("Joe", m.user_name)
         self.assertIn("create_order", m.inline_keyboard[0][0].callback_data)
         self.assertEqual("Markdown", m.parse_mode)

@@ -2,7 +2,7 @@ from typing import Callable, Optional
 import asyncio
 import dataclasses
 import logging
-from telegram import Update
+from telegram import Update, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
     ContextTypes,
@@ -35,6 +35,7 @@ class TgOutgoingMsg:
     inline_keyboard: list[list[InlineKeyboardButton]] | None = None
     reply_markup: Optional[str] = None
     parse_mode: Optional[str] = None
+    remove_keyboard: bool = False
 
 
 OnMessageType = Callable[[TgIncomingMsg], None]
@@ -156,6 +157,8 @@ class TelegramReal(Tg):
                 for row in m.inline_keyboard
             ]
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+        if m.remove_keyboard:
+            reply_markup = ReplyKeyboardRemove()
         asyncio.create_task(
             self.application.bot.send_message(
                 m.user_id, m.text, parse_mode=parse_mode, reply_markup=reply_markup

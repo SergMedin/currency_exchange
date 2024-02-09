@@ -47,12 +47,14 @@ class Button:
 class OutMessage:
     text: str
     buttons: list[list[Button]] = field(default_factory=list)
+    remove_keyboard: bool = False
     next: Optional["OutMessage"] = None
     parse_mode: Optional[str] = None
     buttons_below: list[list[Button]] = field(default_factory=list)
+    # remove_keyboard: bool = False
 
     def __add__(self, other: "OutMessage") -> "OutMessage":
-        return OutMessage(self.text, self.buttons, other)
+        return OutMessage(self.text, self.buttons, self.remove_keyboard, other)
 
 
 @dataclass

@@ -53,7 +53,8 @@ class Main(ExchgController):
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, Command):
             if e.name == "start":
-                return self.render()
+                # return self.render()
+                return OutMessage("Добро пожаловать в сервис обмена валюты!", remove_keyboard=True) + self.render()
             elif e.name == "help":
                 return self.show_child(Help(self))
             else:
@@ -141,9 +142,10 @@ class Statistics(ExchgController):
         return m
 
     def process_event(self, e: Event) -> OutMessage:
-        if isinstance(e, ButtonAction):
-            return self.close()
-        raise NotImplementedError()
+        # if isinstance(e, ButtonAction):
+            # return self.close()
+        # raise NotImplementedError()
+        return self.close()
 
 
 class Help(Controller):

@@ -190,6 +190,7 @@ class Application:
         parse_mode=None,
         reply_markup=None,
         inline_keyboard: list[list[Button]] | None = None,
+        remove_keyboard=False,
     ):
         if inline_keyboard:
             keyboard = [
@@ -206,6 +207,7 @@ class Application:
                 reply_markup=reply_markup,
                 parse_mode=parse_mode,
                 inline_keyboard=keyboard,
+                remove_keyboard=remove_keyboard,
             ),
             parse_mode=parse_mode,
             reply_markup=reply_markup,
@@ -265,6 +267,7 @@ class Application:
                 parse_mode=out.parse_mode,
                 reply_markup=reply_markup,
                 inline_keyboard=out.buttons,
+                remove_keyboard=out.remove_keyboard,
             )
             out = out.next
 
