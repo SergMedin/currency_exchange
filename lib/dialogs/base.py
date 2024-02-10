@@ -18,3 +18,6 @@ class ExchgController(Controller):
             assert isinstance(self.parent, ExchgController)
             return self.parent.session
         return self._session
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}"
