@@ -1,10 +1,8 @@
-from typing import Optional
 from decimal import Decimal
 import datetime
 import os
 import logging
 
-from tinydb import TinyDB, Query
 from dotenv import load_dotenv
 
 from bootshop.stories import (
