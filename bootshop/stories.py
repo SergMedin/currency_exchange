@@ -59,7 +59,8 @@ class OutMessage:
         return self
 
     def __repr__(self) -> str:
-        return f"OutMessage(text={self.text[:30]}, next={"..." if self.next else None}, parse_mode={self.parse_mode}, buttons={self.buttons}, buttons_below={self.buttons_below})"
+        next = "..." if self.next else None
+        return f"OutMessage(text={self.text[:30]}, next={next}, parse_mode={self.parse_mode}, buttons={self.buttons}, buttons_below={self.buttons_below})"
 
 
 @dataclass
