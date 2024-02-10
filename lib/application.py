@@ -2,6 +2,7 @@ from typing import Optional
 from decimal import Decimal
 import datetime
 import os
+import logging
 
 from tinydb import TinyDB, Query
 from dotenv import load_dotenv
@@ -140,10 +141,13 @@ class Application:
         else:
             event = Message(m.user_id, text=m.text)
 
+        logging.info(f"Event: {event}; top: {top}")
         out = top.process_event(event)
         assert out is not None
 
         while out:
+            logging.info(f"Out: {out}")
+
             buttons_below = None
             if out.buttons_below is not None:
                 buttons_below = [[b.text for b in line] for line in out.buttons_below]
@@ -159,6 +163,7 @@ class Application:
             out = out.next
 
     def _on_incoming_tg_message(self, m: TgIncomingMsg):
+        logging.info(f"Got message: {m}")
         try:
             return self._process_incoming_tg_message(m)
         except ValueError as e:

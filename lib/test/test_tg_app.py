@@ -19,13 +19,10 @@ class TestTgApp(unittest.TestCase):
 
     def test_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
-        self.assertEqual(2, len(self.tg.outgoing))
-        m = self.tg.outgoing[1]
+        self.assertEqual(3, len(self.tg.outgoing))
+        m = self.tg.outgoing[-1]
         self.assertEqual("Joe", m.user_name)
-        self.assertIn(
-            "Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text
-        )
-        self.assertIn("create_order", m.inline_keyboard[0][0].callback_data)
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
         self.assertEqual("Markdown", m.parse_mode)
 
     def test_help_command(self):
@@ -35,9 +32,7 @@ class TestTgApp(unittest.TestCase):
         self.assertIn("Operating Currency Pair", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
-        self.assertIn(
-            "Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text
-        )
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
 
     def test_help_text(self):
         self.tg.emulate_incoming_message(1, "Joe", "Help")
@@ -46,9 +41,7 @@ class TestTgApp(unittest.TestCase):
         self.assertIn("Operating Currency Pair", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
-        self.assertIn(
-            "Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text
-        )
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
 
     def test_statistic_button(self):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="statistics")
@@ -57,9 +50,7 @@ class TestTgApp(unittest.TestCase):
         self.assertIn("Current exchange rate:", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
-        self.assertIn(
-            "Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text
-        )
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
 
     def test_my_orders_button(self):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="my_orders")
@@ -68,9 +59,7 @@ class TestTgApp(unittest.TestCase):
         self.assertIn("У вас нет активных заявок", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
-        self.assertIn(
-            "Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text
-        )
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
 
     def test_simple_match(self):
         self.tg.emulate_incoming_message(
@@ -139,7 +128,7 @@ class TestTgApp(unittest.TestCase):
 
     def test_on_incoming_tg_message_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
-        self.assertEqual(2, len(self.tg.outgoing))
+        self.assertEqual(3, len(self.tg.outgoing))
         self.assertEqual("Joe", self.tg.outgoing[0].user_name)
         with open(
             "./lib/dialogs/tg_messages/start_message.md",

@@ -14,7 +14,7 @@ from bootshop.stories import (
     ButtonAction,
 )
 from lib.lazy_load import LazyMessageLoader
-from lib.data import User, OrderType, Order
+from lib.data import User
 from .session import Session
 from .base import ExchgController
 from .place_order import CreateOrder
@@ -30,9 +30,8 @@ _start_message_loader = LazyMessageLoader(
 
 class Main(ExchgController):
     def __init__(self, session: Session):
-        tg_start_message = _start_message_loader.message
         super().__init__(
-            text=tg_start_message,
+            text="Выберите действие:",
             parse_mode="Markdown",
             buttons=[
                 [
@@ -53,13 +52,7 @@ class Main(ExchgController):
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, Command):
             if e.name == "start":
-                # return self.render()
-                return (
-                    OutMessage(
-                        "Добро пожаловать в сервис обмена валюты!", buttons_below=[]
-                    )
-                    + self.render()
-                )
+                return self._start()
             elif e.name == "help":
                 return self.show_child(Help(self))
             else:
@@ -76,6 +69,13 @@ class Main(ExchgController):
                 return OutMessage(f"Неизвестная команда: {e.name}") + self.render()
             return self.show_child(child)
         raise NotImplementedError()
+
+    def _start(self) -> OutMessage:
+        m = OutMessage(
+            "Добро пожаловать в сервис обмена валюты!", buttons_below=[]
+        ) + OutMessage(_start_message_loader.message)
+        m = m + self.render()
+        return m
 
 
 class MyOrders(ExchgController):
@@ -145,9 +145,6 @@ class Statistics(ExchgController):
         return m
 
     def process_event(self, e: Event) -> OutMessage:
-        # if isinstance(e, ButtonAction):
-        # return self.close()
-        # raise NotImplementedError()
         return self.close()
 
 

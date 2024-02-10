@@ -1,4 +1,3 @@
-import copy
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -50,12 +49,17 @@ class OutMessage:
     buttons: list[list[Button]] = field(default_factory=list)
     next: Optional["OutMessage"] = None
     parse_mode: Optional[str] = None
-    buttons_below: list[list[Button]] = field(default_factory=list)
+    buttons_below: Optional[list[list[Button]]] = None
 
     def __add__(self, other: "OutMessage") -> "OutMessage":
-        chain = copy.copy(self)
-        chain.next = other
-        return chain
+        insert_after = self
+        while insert_after.next:
+            insert_after = insert_after.next
+        insert_after.next = other
+        return self
+
+    def __repr__(self) -> str:
+        return f"OutMessage(text={self.text[:30]}, next={"..." if self.next else None}, parse_mode={self.parse_mode}, buttons={self.buttons}, buttons_below={self.buttons_below})"
 
 
 @dataclass
@@ -64,7 +68,7 @@ class Controller:
     child: Optional["Controller"] = None
     text: Optional[str] = ""
     buttons: list[list[Button]] = field(default_factory=list)
-    buttons_below: list[list[Button]] = field(default_factory=list)
+    buttons_below: Optional[list[list[Button]]] = None
     parse_mode: Optional[str] = None
 
     def process_event(self, e: Event) -> OutMessage:
