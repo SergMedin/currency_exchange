@@ -394,7 +394,7 @@ class CreateOrder(ExchgController):
                     relative_rate=order.relative_rate,
                 )
                 try:  # FIXME
-                    self.session.exchange.on_new_order(o)
+                    self.session.exchange.place_order(o)
                 except Exception as e:
                     return OutMessage(
                         f"Ошибка размещения заказа: {e}"
