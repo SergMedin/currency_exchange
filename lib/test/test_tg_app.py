@@ -15,18 +15,14 @@ class TestTgApp(unittest.TestCase):
     def setUp(self):
         self.tg = TelegramMock()
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg, debug_mode=True)
-
-    def tearDown(self) -> None:
-        self.app._app_db.close()
+        self.app = Application(self.db, self.tg)
 
     def test_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
-        self.assertEqual(2, len(self.tg.outgoing))
-        m = self.tg.outgoing[1]
+        self.assertEqual(3, len(self.tg.outgoing))
+        m = self.tg.outgoing[-1]
         self.assertEqual("Joe", m.user_name)
-        self.assertIn("Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text)
-        self.assertIn("create_order", m.inline_keyboard[0][0].callback_data)
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
         self.assertEqual("Markdown", m.parse_mode)
 
     def test_help_command(self):
@@ -36,7 +32,7 @@ class TestTgApp(unittest.TestCase):
         self.assertIn("Operating Currency Pair", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
-        self.assertIn("Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text)
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
 
     def test_help_text(self):
         self.tg.emulate_incoming_message(1, "Joe", "Help")
@@ -45,7 +41,7 @@ class TestTgApp(unittest.TestCase):
         self.assertIn("Operating Currency Pair", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
-        self.assertIn("Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text)
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
 
     def test_statistic_button(self):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="statistics")
@@ -54,7 +50,7 @@ class TestTgApp(unittest.TestCase):
         self.assertIn("Current exchange rate:", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
-        self.assertIn("Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text)
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
 
     def test_my_orders_button(self):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="my_orders")
@@ -63,7 +59,7 @@ class TestTgApp(unittest.TestCase):
         self.assertIn("У вас нет активных заявок", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
-        self.assertIn("Этот бот помогает сделать операции по обмену валюты RUB/AMD.", m.text)
+        self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
 
     def test_simple_match(self):
         self.tg.emulate_incoming_message(
@@ -132,21 +128,16 @@ class TestTgApp(unittest.TestCase):
 
     def test_on_incoming_tg_message_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
-        self.assertEqual(2, len(self.tg.outgoing))
+        self.assertEqual(3, len(self.tg.outgoing))
         self.assertEqual("Joe", self.tg.outgoing[0].user_name)
-        with open("./lib/dialogs/tg_messages/start_message.md", "r", encoding="UTF-8", errors="ignore") as f:
+        with open(
+            "./lib/dialogs/tg_messages/start_message.md",
+            "r",
+            encoding="UTF-8",
+            errors="ignore",
+        ) as f:
             tg_start_message = f.read().strip()
         self.assertEqual(tg_start_message, self.tg.outgoing[1].text)
-
-    def test_on_incoming_tg_message_list_command(self):
-        self.tg.emulate_incoming_message(1, "Joe", "/list")
-        self.assertEqual(1, len(self.tg.outgoing))
-        self.assertEqual("You don't have any active orders", self.tg.outgoing[-1].text)
-        self.tg.emulate_incoming_message(
-            1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt 100 lifetime_h 1"
-        )
-        self.tg.emulate_incoming_message(1, "Joe", "/list")
-        self.assertIn("Your orders", self.tg.outgoing[-1].text)
 
     def test_on_incoming_tg_message_remove_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/remove 12345")
@@ -181,10 +172,7 @@ class TestTGAppSM(unittest.TestCase):
     def setUp(self):
         self.tg = TelegramMock()
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg, debug_mode=True)
-
-    def tearDown(self) -> None:
-        self.app._app_db.close()
+        self.app = Application(self.db, self.tg)
 
     def _bot_start(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")

@@ -47,14 +47,19 @@ class Button:
 class OutMessage:
     text: str
     buttons: list[list[Button]] = field(default_factory=list)
-    remove_keyboard: bool = False
     next: Optional["OutMessage"] = None
     parse_mode: Optional[str] = None
-    buttons_below: list[list[Button]] = field(default_factory=list)
-    # remove_keyboard: bool = False
+    buttons_below: Optional[list[list[Button]]] = None
 
     def __add__(self, other: "OutMessage") -> "OutMessage":
-        return OutMessage(self.text, self.buttons, self.remove_keyboard, other)
+        insert_after = self
+        while insert_after.next:
+            insert_after = insert_after.next
+        insert_after.next = other
+        return self
+
+    def __repr__(self) -> str:
+        return f"OutMessage(text={self.text[:30]}, next={"..." if self.next else None}, parse_mode={self.parse_mode}, buttons={self.buttons}, buttons_below={self.buttons_below})"
 
 
 @dataclass
@@ -63,7 +68,7 @@ class Controller:
     child: Optional["Controller"] = None
     text: Optional[str] = ""
     buttons: list[list[Button]] = field(default_factory=list)
-    buttons_below: list[list[Button]] = field(default_factory=list)
+    buttons_below: Optional[list[list[Button]]] = None
     parse_mode: Optional[str] = None
 
     def process_event(self, e: Event) -> OutMessage:
@@ -94,9 +99,9 @@ class Controller:
     def on_child_closed(self, child: "Controller") -> OutMessage:
         return self.render()
 
-    def get_top(self) -> "Controller":
+    def get_current_active(self) -> "Controller":
         if self.child:
-            return self.child.get_top()
+            return self.child.get_current_active()
         return self
 
 

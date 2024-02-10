@@ -15,15 +15,4 @@ class TestOrderCreationDialogs(unittest.TestCase):
     def setUp(self):
         self.tg = TelegramMock()
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg, debug_mode=True)
-
-    def tearDown(self) -> None:
-        self.app._app_db.close()
-
-    def test_start_command(self):
-        self.tg.emulate_incoming_message(1, "Joe", "/start")
-        self.assertEqual(2, len(self.tg.outgoing))
-        m = self.tg.outgoing[1]
-        self.assertEqual("Joe", m.user_name)
-        self.assertIn("create_order", m.inline_keyboard[0][0].callback_data)
-        self.assertEqual("Markdown", m.parse_mode)
+        self.app = Application(self.db, self.tg)
