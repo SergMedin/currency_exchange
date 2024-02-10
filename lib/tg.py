@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
 import asyncio
 import dataclasses
 import logging
@@ -33,9 +33,8 @@ class TgOutgoingMsg:
     user_name: str | None
     text: str
     inline_keyboard: list[list[InlineKeyboardButton]] | None = None
-    reply_markup: Optional[str] = None
+    keyboard_below: Optional[str] = None
     parse_mode: Optional[str] = None
-    remove_keyboard: bool = False
 
 
 OnMessageType = Callable[[TgIncomingMsg], None]
@@ -50,9 +49,7 @@ class Tg:
     def on_message(self, value: OnMessageType) -> None:
         self._on_message = value
 
-    def send_message(
-        self, m: TgOutgoingMsg, parse_mode=None, reply_markup=None
-    ):  # FIXME: should be removed: , parse_mode=None, reply_markup=None
+    def send_message(self, m: TgOutgoingMsg):
         raise NotImplementedError()
 
 
@@ -62,7 +59,7 @@ class TelegramMock(Tg):
         self.outgoing: list[TgOutgoingMsg] = []  # type: ignore
         self.incoming: list[TgIncomingMsg] = []  # type: ignore
 
-    def send_message(self, m: TgOutgoingMsg, parse_mode=None, reply_markup=None):
+    def send_message(self, m: TgOutgoingMsg):
         if not isinstance(m, TgOutgoingMsg):
             raise ValueError()
         self.outgoing.append(m)
@@ -141,12 +138,18 @@ class TelegramReal(Tg):
             logging.error(f"Error: {str(e)}")
             # await update.message.reply_text(f"Error: {str(e)}")
 
-    def send_message(self, m: TgOutgoingMsg, parse_mode=None, reply_markup=None):
-        if reply_markup:
-            reply_markup = telegram.ReplyKeyboardMarkup(
-                reply_markup, resize_keyboard=True, one_time_keyboard=True
+    def send_message(self, m: TgOutgoingMsg):
+        reply_markup: Any = None
+        if m.keyboard_below is not None:
+            assert isinstance(m.keyboard_below, list)
+            reply_markup = (
+                telegram.ReplyKeyboardMarkup(
+                    m.keyboard_below, resize_keyboard=True, one_time_keyboard=True
+                )
+                if len(m.keyboard_below) > 0
+                else ReplyKeyboardRemove()
             )
-        if m.inline_keyboard:
+        elif m.inline_keyboard:
             keyboard = [
                 [
                     telegram.InlineKeyboardButton(
@@ -157,10 +160,9 @@ class TelegramReal(Tg):
                 for row in m.inline_keyboard
             ]
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
-        if m.remove_keyboard:
-            reply_markup = ReplyKeyboardRemove()
+
         asyncio.create_task(
             self.application.bot.send_message(
-                m.user_id, m.text, parse_mode=parse_mode, reply_markup=reply_markup
+                m.user_id, m.text, parse_mode=m.parse_mode, reply_markup=reply_markup
             )
         )

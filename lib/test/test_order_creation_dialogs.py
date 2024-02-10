@@ -15,10 +15,7 @@ class TestOrderCreationDialogs(unittest.TestCase):
     def setUp(self):
         self.tg = TelegramMock()
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg, debug_mode=True)
-
-    def tearDown(self) -> None:
-        self.app._app_db.close()
+        self.app = Application(self.db, self.tg)
 
     def test_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")

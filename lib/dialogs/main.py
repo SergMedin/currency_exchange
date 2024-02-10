@@ -54,7 +54,12 @@ class Main(ExchgController):
         if isinstance(e, Command):
             if e.name == "start":
                 # return self.render()
-                return OutMessage("Добро пожаловать в сервис обмена валюты!", remove_keyboard=True) + self.render()
+                return (
+                    OutMessage(
+                        "Добро пожаловать в сервис обмена валюты!", buttons_below=[]
+                    )
+                    + self.render()
+                )
             elif e.name == "help":
                 return self.show_child(Help(self))
             else:
@@ -95,9 +100,7 @@ class MyOrders(ExchgController):
                 if o.relative_rate == -1.0:
                     text_about_rate = f"{o.price} AMD"
                 else:
-                    text_about_rate = (
-                        f"{o.relative_rate} Относительный курс (текущее значение: {o.price} AMD)"
-                    )
+                    text_about_rate = f"{o.relative_rate} Относительный курс (текущее значение: {o.price} AMD)"
 
                 text += (
                     "\n"
@@ -143,7 +146,7 @@ class Statistics(ExchgController):
 
     def process_event(self, e: Event) -> OutMessage:
         # if isinstance(e, ButtonAction):
-            # return self.close()
+        # return self.close()
         # raise NotImplementedError()
         return self.close()
 

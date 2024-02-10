@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -47,14 +48,14 @@ class Button:
 class OutMessage:
     text: str
     buttons: list[list[Button]] = field(default_factory=list)
-    remove_keyboard: bool = False
     next: Optional["OutMessage"] = None
     parse_mode: Optional[str] = None
     buttons_below: list[list[Button]] = field(default_factory=list)
-    # remove_keyboard: bool = False
 
     def __add__(self, other: "OutMessage") -> "OutMessage":
-        return OutMessage(self.text, self.buttons, self.remove_keyboard, other)
+        chain = copy.copy(self)
+        chain.next = other
+        return chain
 
 
 @dataclass
@@ -94,9 +95,9 @@ class Controller:
     def on_child_closed(self, child: "Controller") -> OutMessage:
         return self.render()
 
-    def get_top(self) -> "Controller":
+    def get_current_active(self) -> "Controller":
         if self.child:
-            return self.child.get_top()
+            return self.child.get_current_active()
         return self
 
 
