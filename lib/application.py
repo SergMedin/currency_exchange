@@ -188,7 +188,7 @@ class Application:
             m.user_name,
             "We got your order",
         )
-        self._ex.on_new_order(o)
+        self._ex.place_order(o)
 
     def _handle_remove_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_remove_command_params(params, self._ex, m.user_id)
