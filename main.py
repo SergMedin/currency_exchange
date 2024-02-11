@@ -13,7 +13,7 @@ if __name__ == "__main__":
     load_dotenv()
     setup_logging()
     conn_str = os.getenv("EXCH_DB_CONN_STRING", "sqlite:///exchange_database.sqlite")
-    tg_token: str | None = os.getenv("EXCH_TG_TOKEN")
+    tg_token = os.environ["EXCH_TG_TOKEN"]
     print(f"tg_token: ...{tg_token[-5:]}" if tg_token else "tg_token: None")
     zmq_orders_log_endpoint = os.getenv(
         "ZMQ_ORDERS_LOG_ENDPOINT", "inproc://orders.log"

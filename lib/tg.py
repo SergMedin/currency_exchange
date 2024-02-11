@@ -41,9 +41,6 @@ OnMessageType = Callable[[TgIncomingMsg], None]
 
 
 class Tg:
-    def __init__(self):
-        self.admin_contacts: Optional[list[str]] = None
-
     @property
     def on_message(self) -> OnMessageType:
         return self._on_message

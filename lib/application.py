@@ -212,9 +212,10 @@ class Application:
 
         # Notify admins
         if self._tg.admin_contacts is not None:
-            message_for_admins = "match!\n\n"
+            message_for_admins = ["match!"]
             for attr, value in vars(m).items():
-                message_for_admins += f"{attr}:\n{value}\n\n"
+                message_for_admins.append(f"{attr}:\n{value}")
+            message_for_admins = "\n\n".join(message_for_admins)
 
             for admin_contact in self._tg.admin_contacts:
                 self._tg.send_message(
