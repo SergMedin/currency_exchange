@@ -1,7 +1,6 @@
 import requests  # type: ignore
 import threading
 import logging
-from dotenv import load_dotenv
 import os
 from decimal import Decimal
 
@@ -41,8 +40,6 @@ class CurrencyFreaksClient:
         }
 
     def update_rates(self):
-        logging.info("We are trying to update currency rates.")
-        print("We are trying to update currency rates.")
         attempt = 0
         while attempt < 3:
             try:
@@ -83,19 +80,3 @@ class CurrencyConverter:
         else:
             logging.error("Ошибка: не удалось найти курс для одной из валют.")
             return None
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    api_key = os.getenv("EXCH_CURRENCYFREAKS_TOKEN")
-    currency_client = CurrencyFreaksClient(api_key)
-
-    converter = CurrencyConverter(currency_client)
-    rate = converter.get_rate("RUB", "AMD")
-    if rate:
-        logging.debug(f"1 RUB = {rate['rate']:.4f} AMD on {rate['date']}")
-
-    converter = CurrencyConverter(CurrencyMockClient())
-    rate = converter.get_rate("RUB", "AMD")
-    if rate:
-        logging.debug(f"1 RUB = {rate['rate']:.4f} AMD on {rate['date']}")

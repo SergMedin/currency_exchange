@@ -1,5 +1,4 @@
 from typing import Optional
-from dotenv import load_dotenv
 import os
 import threading
 import dataclasses
@@ -72,15 +71,9 @@ class ShoesShopApp:
                 if cmd in cmds:
                     cmds[cmd](m, pp[1:])
                 else:
-                    self._tg.send_message(
-                        TgOutgoingMsg(m.user_id, m.user_name, f"Unknown command: {cmd}")
-                    )
+                    self._tg.send_message(TgOutgoingMsg(m.user_id, m.user_name, f"Unknown command: {cmd}"))
             else:
-                self._tg.send_message(
-                    TgOutgoingMsg(
-                        m.user_id, m.user_name, f"Dunno what to do with {m.text}"
-                    )
-                )
+                self._tg.send_message(TgOutgoingMsg(m.user_id, m.user_name, f"Dunno what to do with {m.text}"))
         except Exception as e:
             self._tg.send_message(TgOutgoingMsg(m.user_id, None, str(e)))
             raise
@@ -92,9 +85,7 @@ class ShoesShopApp:
         cmp_to = ["Всего", "Размеры"]
         hdr1, hdr2 = col1[0], col2[0]
         if [hdr1, hdr2] != cmp_to:
-            logging.error(
-                f"Wrong heading of Google Sheets table: {[hdr1, hdr2]} while {cmp_to} expected"
-            )
+            logging.error(f"Wrong heading of Google Sheets table: {[hdr1, hdr2]} while {cmp_to} expected")
             return
 
         def is_int(s):
@@ -110,9 +101,7 @@ class ShoesShopApp:
             if not amt and not size:
                 break
             if not is_int(amt) or (not is_int(size) and size != MAGIC_SPEC_SIZE):
-                logging.error(
-                    f"Looks like row #{row} in Google Spreadas has wrong format: {[amt, size]}"
-                )
+                logging.error(f"Looks like row #{row} in Google Spreadas has wrong format: {[amt, size]}")
             else:
                 amt = int(amt)
                 if amt < 0 or amt > 100:
@@ -123,9 +112,7 @@ class ShoesShopApp:
         d = deepdiff.DeepDiff(self._stocks.sizes, s.sizes) if self._stocks.sizes else {}
         self._stocks = s
         count = len(s.sizes)
-        logging.info(
-            f"Updating stocks from Google Spreads: loaded {count} rows; diff: {d}"
-        )
+        logging.info(f"Updating stocks from Google Spreads: loaded {count} rows; diff: {d}")
 
     def _check_admin_access(self, m):
         if m.user_id not in self.ADM_USSERS:
@@ -149,7 +136,6 @@ class ShoesShopApp:
 
 
 def init():
-    load_dotenv()
     tg_token = os.getenv("BOOTSHOP_TG_TOKEN")
     gs_cred_filename = os.getenv("BOOTSHOP_GS_CRED_FILENAME")
     gs_key = os.getenv("BOOTSHOP_GS_KEY")

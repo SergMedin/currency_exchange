@@ -3,7 +3,6 @@ import datetime
 import os
 import logging
 
-from dotenv import load_dotenv
 
 from bootshop.stories import (
     OutMessage,
@@ -28,6 +27,7 @@ class Application:
         self,
         db: Db,
         tg: Tg,
+        currency_client: CurrencyFreaksClient | CurrencyMockClient,
         zmq_orders_log_endpoint=None,
         log_spreadsheet_key=None,
     ):
@@ -48,16 +48,7 @@ class Application:
             )
         )
 
-        # FIXME: remove this outside of the module
-        if "EXCH_CURRENCYFREAKS_TOKEN" in os.environ:
-            load_dotenv()
-            currency_client_api_key = os.environ["EXCH_CURRENCYFREAKS_TOKEN"]
-            currency_client: CurrencyFreaksClient | CurrencyMockClient = CurrencyFreaksClient(currency_client_api_key)
-            currency_converter = CurrencyConverter(currency_client)
-        else:
-            currency_client = CurrencyMockClient()
-            currency_converter = CurrencyConverter(currency_client)
-
+        currency_converter = CurrencyConverter(currency_client)
         self._ex = Exchange(self._db, currency_converter, self._on_match, zmq_orders_log_endpoint)
 
         # FIXME: no env vars reading stuff should be here

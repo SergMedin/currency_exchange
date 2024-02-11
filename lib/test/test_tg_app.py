@@ -3,6 +3,7 @@ import os
 
 from ..application import Application
 from ..tg import TelegramMock
+from ..currency_rates import CurrencyMockClient
 from ..db_sqla import SqlDb
 
 
@@ -16,7 +17,7 @@ class TestTgApp(unittest.TestCase):
         self.tg = TelegramMock()
         self.tg.admin_contacts = [3, 4, 5]
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg)
+        self.app = Application(self.db, self.tg, currency_client=CurrencyMockClient())
 
     def test_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
@@ -145,7 +146,7 @@ class TestTGAppSM(unittest.TestCase):
     def setUp(self):
         self.tg = TelegramMock()
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg)
+        self.app = Application(self.db, self.tg, currency_client=CurrencyMockClient())
 
     def _bot_start(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
