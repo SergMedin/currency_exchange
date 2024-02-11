@@ -49,13 +49,17 @@ class Application:
         )
 
         currency_converter = CurrencyConverter(currency_client)
-        self._ex = Exchange(self._db, currency_converter, self._on_match, zmq_orders_log_endpoint)
+        self._ex = Exchange(
+            self._db, currency_converter, self._on_match, zmq_orders_log_endpoint
+        )
 
         # FIXME: no env vars reading stuff should be here
         if zmq_orders_log_endpoint:
             assert log_spreadsheet_key is not None
             worksheet_title = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
-            self._loger = GSheetsLoger(zmq_orders_log_endpoint, log_spreadsheet_key, worksheet_title)
+            self._loger = GSheetsLoger(
+                zmq_orders_log_endpoint, log_spreadsheet_key, worksheet_title
+            )
             self._loger.start()
 
         self._validator = business_rules.Validator()
@@ -74,7 +78,8 @@ class Application:
     ):
         if inline_keyboard:
             keyboard = [
-                [InlineKeyboardButton(b.text, callback_data=b.action) for b in line] for line in inline_keyboard
+                [InlineKeyboardButton(b.text, callback_data=b.action) for b in line]
+                for line in inline_keyboard
             ]
         else:
             keyboard = None
@@ -177,11 +182,15 @@ class Application:
         self._validator.validate_remove_command_params(params, self._ex, m.user_id)
         remove_order_id = int(params[0])
         self._ex.remove_order(remove_order_id)
-        self._send_message(m.user_id, m.user_name, f"Order with id {remove_order_id} was removed")
+        self._send_message(
+            m.user_id, m.user_name, f"Order with id {remove_order_id} was removed"
+        )
 
     @staticmethod
     def _convert_to_utc(creation_time, lifetime_sec):
-        return datetime.datetime.fromtimestamp(creation_time + lifetime_sec, datetime.UTC)
+        return datetime.datetime.fromtimestamp(
+            creation_time + lifetime_sec, datetime.UTC
+        )
 
     def _on_match(self, m: Match):
         buyer_id = m.buy_order.user.id
@@ -208,4 +217,6 @@ class Application:
                 message_for_admins += f"{attr}:\n{value}\n\n"
 
             for admin_contact in self._tg.admin_contacts:
-                self._tg.send_message(TgOutgoingMsg(admin_contact, None, message_for_admins))
+                self._tg.send_message(
+                    TgOutgoingMsg(admin_contact, None, message_for_admins)
+                )

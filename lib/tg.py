@@ -85,14 +85,18 @@ class TelegramReal(Tg):
     def __init__(self, token: str):
         # print(f"token: ...{token[-5:]}")
         self.application: Application = Application.builder().token(token).build()
-        self.application.add_handler(MessageHandler(filters.TEXT, self._default_handler))
+        self.application.add_handler(
+            MessageHandler(filters.TEXT, self._default_handler)
+        )
         self.application.add_handler(CallbackQueryHandler(self._callback_query_handler))
         self.admin_contacts: Optional[list[str]] = None
 
     def run_forever(self):
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-    async def _default_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def _default_handler(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
         if (
             update.effective_chat is None
             or update.effective_chat.username is None
@@ -111,7 +115,9 @@ class TelegramReal(Tg):
         except ValueError as e:
             await update.message.reply_text(f"Error: {str(e)}")
 
-    async def _callback_query_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def _callback_query_handler(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
         # logging.info(f"got callback query. Update: {update}")
         query = update.callback_query
         if query is None:
@@ -142,17 +148,26 @@ class TelegramReal(Tg):
         if m.keyboard_below is not None:
             assert isinstance(m.keyboard_below, list)
             reply_markup = (
-                telegram.ReplyKeyboardMarkup(m.keyboard_below, resize_keyboard=True, one_time_keyboard=True)
+                telegram.ReplyKeyboardMarkup(
+                    m.keyboard_below, resize_keyboard=True, one_time_keyboard=True
+                )
                 if len(m.keyboard_below) > 0
                 else ReplyKeyboardRemove()
             )
         elif m.inline_keyboard:
             keyboard = [
-                [telegram.InlineKeyboardButton(button.text, callback_data=button.callback_data) for button in row]
+                [
+                    telegram.InlineKeyboardButton(
+                        button.text, callback_data=button.callback_data
+                    )
+                    for button in row
+                ]
                 for row in m.inline_keyboard
             ]
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
 
         asyncio.create_task(
-            self.application.bot.send_message(m.user_id, m.text, parse_mode=m.parse_mode, reply_markup=reply_markup)
+            self.application.bot.send_message(
+                m.user_id, m.text, parse_mode=m.parse_mode, reply_markup=reply_markup
+            )
         )
