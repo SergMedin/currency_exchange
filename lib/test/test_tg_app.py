@@ -14,6 +14,7 @@ class TestTgApp(unittest.TestCase):
 
     def setUp(self):
         self.tg = TelegramMock()
+        self.tg.admin_contacts = [3, 4, 5]
         self.db = SqlDb()
         self.app = Application(self.db, self.tg)
 
@@ -62,65 +63,41 @@ class TestTgApp(unittest.TestCase):
         self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
 
     def test_simple_match(self):
-        self.tg.emulate_incoming_message(
-            1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
-        )
-        self.tg.emulate_incoming_message(
-            2, "Dow", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
-        )
+        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1")
+        self.tg.emulate_incoming_message(2, "Dow", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1")
         # four messages: two about the added orders, two about the match
-        self.assertEqual(4, len(self.tg.outgoing))
+        self.assertEqual(4 + len(self.tg.admin_contacts), len(self.tg.outgoing))
 
     def test_simple_no_match(self):
-        self.tg.emulate_incoming_message(
-            1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
-        )
-        self.tg.emulate_incoming_message(
-            2, "Dow", "/add BUY 1500 RUB * 98.01 AMD min_amt 100 lifetime_h 1"
-        )
+        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1")
+        self.tg.emulate_incoming_message(2, "Dow", "/add BUY 1500 RUB * 98.01 AMD min_amt 100 lifetime_h 1")
         self.assertEqual(2, len(self.tg.outgoing))
 
     def test_simple_best_price(self):
-        self.tg.emulate_incoming_message(
-            1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
-        )
-        self.tg.emulate_incoming_message(
-            2, "Dow", "/add SELL 1500 RUB * 100 AMD min_amt 100 lifetime_h 1"
-        )
-        self.tg.emulate_incoming_message(
-            3, "KarlMax", "/add SELL 1500 RUB * 110 AMD min_amt 100 lifetime_h 1"
-        )
-        self.tg.emulate_incoming_message(
-            100, "Kate", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
-        )
-        # six messages: four about the added orders, two about the match
-        self.assertEqual(6, len(self.tg.outgoing))
-        self.assertIn("по цене 98.1000 за единицу", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1")
+        self.tg.emulate_incoming_message(2, "Dow", "/add SELL 1500 RUB * 100 AMD min_amt 100 lifetime_h 1")
+        self.tg.emulate_incoming_message(3, "KarlMax", "/add SELL 1500 RUB * 110 AMD min_amt 100 lifetime_h 1")
+        self.tg.emulate_incoming_message(100, "Kate", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1")
+        # six messages: four about the added orders, two about the match, two messages for admins
+        self.assertEqual(6 + len(self.tg.admin_contacts), len(self.tg.outgoing))
+        self.assertIn("по цене 98.1000 за единицу", self.tg.outgoing[-1 - len(self.tg.admin_contacts)].text)
 
     def test_check_price_valid(self):
-        self.tg.emulate_incoming_message(
-            1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt 100 lifetime_h 1"
-        )
+        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt 100 lifetime_h 1")
 
     def test_check_price_invalid_decimal(self):
-        self.tg.emulate_incoming_message(
-            1, "Joe", "/add SELL 1000 RUB * 4.54111 AMD min_amt 100 lifetime_h 1"
-        )
+        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1000 RUB * 4.54111 AMD min_amt 100 lifetime_h 1")
         self.assertIn(
             "Price has more than four digits after the decimal point",
             self.tg.outgoing[0].text,
         )
 
     def test_check_price_invalid_value(self):
-        self.tg.emulate_incoming_message(
-            1, "Joe", "/add SELL 1000 RUB * INVALID AMD min_amt 100 lifetime_h 1"
-        )
+        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1000 RUB * INVALID AMD min_amt 100 lifetime_h 1")
         self.assertIn("Invalid value for Decimal", self.tg.outgoing[0].text)
 
     def test_check_min_op_threshold_negative_value(self):
-        self.tg.emulate_incoming_message(
-            1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt -100 lifetime_h 1"
-        )
+        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt -100 lifetime_h 1")
         self.assertEqual(
             "Error: Minimum operational threshold cannot be negative",
             self.tg.outgoing[0].text,
@@ -143,9 +120,7 @@ class TestTgApp(unittest.TestCase):
         self.tg.emulate_incoming_message(1, "Joe", "/remove 12345")
         self.assertEqual(1, len(self.tg.outgoing))
         self.assertIn("Error: Invalid order id: 12345", self.tg.outgoing[0].text)
-        self.tg.emulate_incoming_message(
-            1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt 100 lifetime_h 1"
-        )
+        self.tg.emulate_incoming_message(1, "Joe", "/add SELL 1000 RUB * 4.54 AMD min_amt 100 lifetime_h 1")
         self.tg.emulate_incoming_message(1, "Joe", "/remove 1")
         self.assertEqual(3, len(self.tg.outgoing))
         self.assertEqual("Order with id 1 was removed", self.tg.outgoing[-1].text)
@@ -156,9 +131,7 @@ class TestTgApp(unittest.TestCase):
         self.assertEqual("Error: Invalid command: /invalid", self.tg.outgoing[0].text)
 
     def test_on_incoming_tg_message_group_message(self):
-        self.tg.emulate_incoming_message(
-            -1, "Group", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
-        )
+        self.tg.emulate_incoming_message(-1, "Group", "/add SELL 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1")
         self.assertEqual(1, len(self.tg.outgoing))
         self.assertIn("Error: We don't work with groups yet", self.tg.outgoing[0].text)
 
@@ -195,15 +168,11 @@ class TestTGAppSM(unittest.TestCase):
 
     def _sm_type_invalid(self):
         self.tg.emulate_incoming_message(1, "Joe", "Обменяться телами")
-        self.assertEqual(
-            "Error: Invalid order type: Обменяться телами", self.tg.outgoing[-1].text
-        )
+        self.assertEqual("Error: Invalid order type: Обменяться телами", self.tg.outgoing[-1].text)
 
     def _sm_type_valid(self):
         self.tg.emulate_incoming_message(1, "Joe", "Buy rubles")
-        self.assertEqual(
-            "Enter the amount to exchange (RUB)", self.tg.outgoing[-1].text
-        )
+        self.assertEqual("Enter the amount to exchange (RUB)", self.tg.outgoing[-1].text)
 
     def _sm_currency_from_invalid(self):
         self.tg.emulate_incoming_message(1, "Joe", "Йены")
@@ -225,9 +194,7 @@ class TestTGAppSM(unittest.TestCase):
         self.tg.emulate_incoming_message(1, "Joe", "1000.0")
         self.assertEqual("Error: Invalid amount: 1000.0", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "0")
-        self.assertEqual(
-            "Error: Amount cannot be negative or zero", self.tg.outgoing[-1].text
-        )
+        self.assertEqual("Error: Amount cannot be negative or zero", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "-1000")
         self.assertEqual(
             "Error: Invalid amount: -1000", self.tg.outgoing[-1].text
@@ -249,29 +216,19 @@ class TestTGAppSM(unittest.TestCase):
 
     def _sm_price_invalid(self):
         self.tg.emulate_incoming_message(1, "Joe", "INVALID")
-        self.assertEqual(
-            "Error: Invalid value for Decimal: INVALID", self.tg.outgoing[-1].text
-        )
+        self.assertEqual("Error: Invalid value for Decimal: INVALID", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "0")
-        self.assertEqual(
-            "Error: Price cannot be negative or zero", self.tg.outgoing[-1].text
-        )
+        self.assertEqual("Error: Price cannot be negative or zero", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "-1000")
-        self.assertEqual(
-            "Error: Price cannot be negative or zero", self.tg.outgoing[-1].text
-        )
+        self.assertEqual("Error: Price cannot be negative or zero", self.tg.outgoing[-1].text)
 
     def _sm_price_valid(self):
         self.tg.emulate_incoming_message(1, "Joe", "98.1")
-        self.assertEqual(
-            "Enter the minimum operational threshold in RUB", self.tg.outgoing[-1].text
-        )
+        self.assertEqual("Enter the minimum operational threshold in RUB", self.tg.outgoing[-1].text)
 
     def _sm_min_op_threshold_invalid(self):
         self.tg.emulate_incoming_message(1, "Joe", "INVALID")
-        self.assertEqual(
-            "Error: Invalid value for Decimal: INVALID", self.tg.outgoing[-1].text
-        )
+        self.assertEqual("Error: Invalid value for Decimal: INVALID", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "1001")
         self.assertEqual(
             "Error: Minimum operational threshold cannot be greater than the amount",
@@ -294,9 +251,7 @@ class TestTGAppSM(unittest.TestCase):
         self.tg.emulate_incoming_message(1, "Joe", "INVALID")
         self.assertEqual("Error: Invalid lifetime: INVALID", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "49")
-        self.assertEqual(
-            "Error: Lifetime cannot be greater than 48 hours", self.tg.outgoing[-1].text
-        )
+        self.assertEqual("Error: Lifetime cannot be greater than 48 hours", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "-1")
         self.assertEqual(
             "Error: Invalid lifetime: -1", self.tg.outgoing[-1].text

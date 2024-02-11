@@ -209,3 +209,12 @@ class Application:
         )
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
         self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))
+
+        # Notify admins
+        if self._tg.admin_contacts is not None:
+            message_for_admins = "match!\n\n"
+            for attr, value in vars(m).items():
+                message_for_admins += f"{attr}:\n{value}\n\n"
+
+            for admin_contact in self._tg.admin_contacts:
+                self._tg.send_message(TgOutgoingMsg(admin_contact, None, message_for_admins))

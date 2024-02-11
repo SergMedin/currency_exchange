@@ -41,6 +41,8 @@ class CurrencyFreaksClient:
         }
 
     def update_rates(self):
+        logging.info("We are trying to update currency rates.")
+        print("We are trying to update currency rates.")
         attempt = 0
         while attempt < 3:
             try:
