@@ -59,12 +59,12 @@ class Main(ExchgController):
                 return self.show_child(Help(self))
             return OutMessage(f"Неизвестная команда: {e.text}") + self.render()
         elif isinstance(e, ButtonAction):
-            name = e.name.lower()
+            name = e.name
             try:
                 child = self._a2c[name](self)
             except KeyError:
                 return OutMessage(f"Неизвестная команда: {e.name}") + self.render()
-            return self.show_child(child)
+            return self.amend_last(name, self.show_child(child))
         raise NotImplementedError()
 
     def _start(self) -> OutMessage:
@@ -106,9 +106,9 @@ class MyOrders(ExchgController):
                     f"[активно до: {self._convert_to_utc(o.creation_time, o.lifetime_sec)}])"
                 )
 
-            text += "\n\nчтобы удалить заявку, используйте команду /remove <id>"
-        m.text = text
-        return m
+            text += "\n"
+        m.text = "\nчтобы удалить заявку, используйте команду /remove <id>"
+        return OutMessage(text) + m
 
     @staticmethod
     def _convert_to_utc(creation_time, lifetime_sec):
@@ -121,6 +121,8 @@ class MyOrders(ExchgController):
         )
 
     def process_event(self, e: Event) -> OutMessage:
+        if isinstance(e, ButtonAction):
+            return self.amend_last(e.name, self.close())
         return self.close()
 
 
@@ -142,10 +144,12 @@ class Statistics(ExchgController):
         return m
 
     def process_event(self, e: Event) -> OutMessage:
+        if isinstance(e, ButtonAction):
+            return self.amend_last(e.name, self.close())
         return self.close()
 
 
-class Help(Controller):
+class Help(ExchgController):
     def __init__(self, parent: Controller):
         text = _help_message_loader.message
         super().__init__(
@@ -156,5 +160,6 @@ class Help(Controller):
         )
 
     def process_event(self, e: Event) -> OutMessage:
-        logging.info(f"Help.process_event: {e}")
+        if isinstance(e, ButtonAction):
+            return self.amend_last(e.name, self.close())
         return self.close()

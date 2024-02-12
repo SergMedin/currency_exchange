@@ -43,19 +43,27 @@ class ChooseOrderTypeStep(ExchgController):
         )
 
     def process_event(self, e: Event) -> OutMessage:
+        res: OutMessage
         if isinstance(e, ButtonAction):
             if e.name == "cancel":
                 assert self.parent is not None and isinstance(self.parent, CreateOrder)
-                return self.parent.cancel()
-            self.order_type = OrderType.BUY if e.name == "amd_rub" else OrderType.SELL
-            return self.close()
-        raise NotImplementedError()
+                res = self.parent.cancel()
+            elif e.name in ("rub_amd", "amd_rub"):
+                self.order_type = (
+                    OrderType.BUY if e.name == "amd_rub" else OrderType.SELL
+                )
+                res = self.close()
+            else:
+                res = self.render()
+            res = self.amend_last(e.name, res)
+        else:
+            res = self.render()
+        return res
 
 
 @dataclass
 class EnterAmountStep(ExchgController):
     amount: Decimal | None = None
-    CANCEL_LABEL = "Отмена"
 
     def __init__(self, parent: Controller, order_type: OrderType):
         text = (
@@ -66,15 +74,11 @@ class EnterAmountStep(ExchgController):
         super().__init__(
             parent=parent,
             text=text,
-            buttons=[[Button(self.CANCEL_LABEL, "cancel")]],
         )
         self.order_type = order_type
 
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, Message):
-            if e.text == self.CANCEL_LABEL:
-                assert self.parent is not None and isinstance(self.parent, CreateOrder)
-                return self.parent.cancel()
             try:
                 amount = Decimal(e.text)
                 if amount <= 0:
@@ -85,14 +89,7 @@ class EnterAmountStep(ExchgController):
                 return self.close()
             except decimal.InvalidOperation as e:
                 return OutMessage("Сумма должна быть задана числом") + self.render()
-        elif isinstance(e, ButtonAction):
-            if e.name == "cancel":
-                assert self.parent is not None and isinstance(self.parent, CreateOrder)
-                return self.parent.cancel()
-        raise NotImplementedError()
-
-    def cancel(self):
-        return self.close()
+        return self.render()
 
 
 @dataclass
@@ -125,12 +122,17 @@ class EnterPriceStep(ExchgController):
             except decimal.InvalidOperation as e:
                 return OutMessage("Курс обмена должен быть числом") + self.render()
         elif isinstance(e, ButtonAction):
+            res: OutMessage
             if e.name == "cancel":
                 assert self.parent is not None and isinstance(self.parent, CreateOrder)
-                return self.parent.cancel()
+                res = self.parent.cancel()
             elif e.name == "relative":
-                return self.show_child(EnterRelativeRateStep(self))
-        raise NotImplementedError()
+                res = self.show_child(EnterRelativeRateStep(self))
+            else:
+                logging.error(f"EnterPriceStep: Unknown action: {e.name}")
+                res = self.render()
+            return self.amend_last(e.name, res)
+        return self.render()
 
     def on_child_closed(self, child: Controller) -> OutMessage:
         if isinstance(child, EnterRelativeRateStep):
@@ -178,15 +180,21 @@ class EnterRelativeRateStep(ExchgController):
                     + self.render()
                 )
         elif isinstance(e, ButtonAction):
+            res: OutMessage
             if e.name == "back":
-                return self.close()
+                res = self.close()
             elif e.name.startswith("rel:"):
                 rate = Decimal(e.name.split(":")[1]) / Decimal(100) + Decimal(1)
                 assert self.parent is not None
                 assert isinstance(self.parent, EnterPriceStep)
                 self.parent.relative_rate = rate
-                return self.close()
-        raise NotImplementedError()
+                res = self.close()
+            else:
+                logging.error(f"EnterRelativeRateStep: Unknown action: {e.name}")
+                res = self.render()
+            return self.amend_last(e.name, res)
+        logging.error(f"EnterRelativeRateStep: Unknown event: {e}")
+        return self.render()
 
 
 class SetMinOpThresholdStep(ExchgController):
@@ -219,12 +227,18 @@ class SetMinOpThresholdStep(ExchgController):
                     + self.render()
                 )
         elif isinstance(e, ButtonAction):
+            res: OutMessage
             if e.name == "back":
-                return self.close()
+                res = self.close()
             elif e.name == "all-in":
                 self._draft.min_op_threshold = self._draft.amount
-                return self.close()
-        raise NotImplementedError()
+                res = self.close()
+            else:
+                logging.error(f"SetMinOpThresholdStep: Unknown action: {e.name}")
+                res = self.render()
+            return self.amend_last(e.name, res)
+        logging.error(f"SetMinOpThresholdStep: Unknown event: {e}")
+        return self.render()
 
 
 class SetLifetimeStep(ExchgController):
@@ -314,18 +328,24 @@ class ConfirmOrderStep(ExchgController):
 
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, ButtonAction):
+            res: OutMessage
             if e.name == "cancel":
                 assert self.parent is not None and isinstance(self.parent, CreateOrder)
-                return self.parent.cancel()
+                res = self.parent.cancel()
             elif e.name == "place_order":
                 self.confirmed = True
-                return self.close()
+                res = self.close()
             elif e.name == "set_min_op_threshold":
                 assert self.parent is not None and isinstance(self.parent, CreateOrder)
-                return self.show_child(SetMinOpThresholdStep(self, self.parent.order))
+                res = self.show_child(SetMinOpThresholdStep(self, self.parent.order))
             elif e.name == "set_lifetime":
-                return self.show_child(SetLifetimeStep(self))
-        raise NotImplementedError()
+                res = self.show_child(SetLifetimeStep(self))
+            else:
+                logging.error(f"ConfirmOrderStep: Unknown action: {e.name}")
+                res = self.render()
+            return self.amend_last(e.name, res)
+        logging.error(f"ConfirmOrderStep: Unknown event: {e}")
+        return self.render()
 
 
 class CreateOrder(ExchgController):
@@ -400,8 +420,8 @@ class CreateOrder(ExchgController):
                         f"Ошибка размещения заказа: {e}"
                     ) + self.show_child(ConfirmOrderStep(self))
                 return OutMessage("Поздравляем! Ваш заказ размещен") + self.close()
-        logging.error(f"Unknown child: {child}, {child.__class__}")
-        raise NotImplementedError()
+        logging.error(f"CreateOrder: Unknown child: {child}, {child.__class__}")
+        return self.cancel()
 
     def cancel(self):
         return self.close()
