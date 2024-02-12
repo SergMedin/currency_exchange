@@ -56,8 +56,8 @@ class TestTgApp(unittest.TestCase):
 
     def test_my_orders_button(self):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="my_orders")
-        self.assertEqual(1, len(self.tg.outgoing))
-        m = self.tg.outgoing[-1]
+        self.assertEqual(2, len(self.tg.outgoing))
+        m = self.tg.outgoing[0]
         self.assertIn("У вас нет активных заявок", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
