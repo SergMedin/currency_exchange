@@ -58,6 +58,7 @@ class TelegramMock(Tg):
         super().__init__()
         self.outgoing: list[TgOutgoingMsg] = []  # type: ignore
         self.incoming: list[TgIncomingMsg] = []  # type: ignore
+        self.admin_contacts: Optional[list[str]] = None
 
     def send_message(self, m: TgOutgoingMsg):
         if not isinstance(m, TgOutgoingMsg):
@@ -85,6 +86,7 @@ class TelegramReal(Tg):
             MessageHandler(filters.TEXT, self._default_handler)
         )
         self.application.add_handler(CallbackQueryHandler(self._callback_query_handler))
+        self.admin_contacts: Optional[list[str]] = None
 
     def run_forever(self):
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)

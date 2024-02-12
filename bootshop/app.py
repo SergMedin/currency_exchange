@@ -1,5 +1,4 @@
 from typing import Optional
-from dotenv import load_dotenv
 import os
 import threading
 import dataclasses
@@ -149,7 +148,6 @@ class ShoesShopApp:
 
 
 def init():
-    load_dotenv()
     tg_token = os.getenv("BOOTSHOP_TG_TOKEN")
     gs_cred_filename = os.getenv("BOOTSHOP_GS_CRED_FILENAME")
     gs_key = os.getenv("BOOTSHOP_GS_KEY")

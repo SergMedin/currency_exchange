@@ -3,7 +3,6 @@ import datetime
 import os
 import logging
 
-from dotenv import load_dotenv
 
 from bootshop.stories import (
     OutMessage,
@@ -24,11 +23,11 @@ from .lazy_load import LazyMessageLoader
 
 
 class Application:
-
     def __init__(
         self,
         db: Db,
         tg: Tg,
+        currency_client: CurrencyFreaksClient | CurrencyMockClient,
         zmq_orders_log_endpoint=None,
         log_spreadsheet_key=None,
     ):
@@ -49,18 +48,7 @@ class Application:
             )
         )
 
-        # FIXME: remove this outside of the module
-        if "EXCH_CURRENCYFREAKS_TOKEN" in os.environ:
-            load_dotenv()
-            currency_client_api_key = os.environ["EXCH_CURRENCYFREAKS_TOKEN"]
-            currency_client: CurrencyFreaksClient | CurrencyMockClient = (
-                CurrencyFreaksClient(currency_client_api_key)
-            )
-            currency_converter = CurrencyConverter(currency_client)
-        else:
-            currency_client = CurrencyMockClient()
-            currency_converter = CurrencyConverter(currency_client)
-
+        currency_converter = CurrencyConverter(currency_client)
         self._ex = Exchange(
             self._db, currency_converter, self._on_match, zmq_orders_log_endpoint
         )
@@ -221,3 +209,15 @@ class Application:
         )
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
         self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))
+
+        # Notify admins
+        if self._tg.admin_contacts is not None:
+            message_for_admins = ["match!"]
+            for attr, value in vars(m).items():
+                message_for_admins.append(f"{attr}:\n{value}")
+            message_for_admins = "\n\n".join(message_for_admins)
+
+            for admin_contact in self._tg.admin_contacts:
+                self._tg.send_message(
+                    TgOutgoingMsg(admin_contact, None, message_for_admins)
+                )
