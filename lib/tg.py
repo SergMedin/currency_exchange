@@ -147,7 +147,8 @@ class TelegramReal(Tg):
                 and update.callback_query.message.text is not None
             ):
                 lines += [update.callback_query.message.text, ""]
-            logging.info(f"replacing text: {'PREV + ' if lines else ''}{replace_text}")
+            s = "PREV + " if lines else ""
+            logging.info(f"replacing text: {s}{replace_text}")
             lines.append(replace_text)
             text = "\n".join(lines)
             await query.edit_message_text(text=text, parse_mode="Markdown")
