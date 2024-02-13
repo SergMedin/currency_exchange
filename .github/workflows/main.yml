@@ -103,6 +103,7 @@ jobs:
           echo SILENCE_WARNINGS_ENV_KEY=${{ secrets.SILENCE_WARNINGS_ENV_KEY }} >> .env
           echo GOOGLE_SPREADSHEET_SHEET_TITLE=${{ secrets.GOOGLE_SPREADSHEET_SHEET_TITLE }} >> .env
           echo EXCH_CURRENCYFREAKS_TOKEN=${{ secrets.EXCH_CURRENCYFREAKS_TOKEN }} >> .env
+          echo ADMINS_TG=${{ secrets.ADMINS_TG }} >> .env
           rm -f ${{ secrets.GOOGLE_ACC_KEY_FILE }}
           touch ${{ secrets.GOOGLE_ACC_KEY_FILE }}
           echo '${{ secrets.GOOGLE_ACC_FILE_CONTENT }}' >> ${{ secrets.GOOGLE_ACC_KEY_FILE }}
