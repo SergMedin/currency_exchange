@@ -1,11 +1,8 @@
 import logging
 import os
 
-from dotenv import load_dotenv
-
 
 def setup_logging():
-    load_dotenv()
     CONSOLE_LOG_LVL = os.getenv("CONSOLE_LOG_LVL", "DEBUG")
     logging.basicConfig(level=CONSOLE_LOG_LVL)
 

@@ -1,9 +1,9 @@
+from typing import Optional
 from decimal import Decimal
 import datetime
 import os
 import logging
 
-from dotenv import load_dotenv
 
 from bootshop.stories import (
     OutMessage,
@@ -24,11 +24,11 @@ from .lazy_load import LazyMessageLoader
 
 
 class Application:
-
     def __init__(
         self,
         db: Db,
         tg: Tg,
+        currency_client: CurrencyFreaksClient | CurrencyMockClient,
         zmq_orders_log_endpoint=None,
         log_spreadsheet_key=None,
     ):
@@ -36,7 +36,7 @@ class Application:
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
 
-        # FIXME: should be persistent, LRU with limit, created only when needed
+        # FIXME: should be (1) persistent, (2) LRU with limit, (3) created only when really needed
         self._sessions: dict[int, dialogs.Main] = {}
 
         # FIXME: move it out of here
@@ -49,18 +49,7 @@ class Application:
             )
         )
 
-        # FIXME: remove this outside of the module
-        if "EXCH_CURRENCYFREAKS_TOKEN" in os.environ:
-            load_dotenv()
-            currency_client_api_key = os.environ["EXCH_CURRENCYFREAKS_TOKEN"]
-            currency_client: CurrencyFreaksClient | CurrencyMockClient = (
-                CurrencyFreaksClient(currency_client_api_key)
-            )
-            currency_converter = CurrencyConverter(currency_client)
-        else:
-            currency_client = CurrencyMockClient()
-            currency_converter = CurrencyConverter(currency_client)
-
+        currency_converter = CurrencyConverter(currency_client)
         self._ex = Exchange(
             self._db, currency_converter, self._on_match, zmq_orders_log_endpoint
         )
@@ -106,7 +95,7 @@ class Application:
         )
         self._tg.send_message(m)
 
-    def _process_incoming_tg_message(self, m: TgIncomingMsg):
+    def _process_incoming_tg_message(self, m: TgIncomingMsg) -> Optional[str]:
         if m.user_id < 0:
             raise ValueError("We don't work with groups yet")
 
@@ -143,22 +132,30 @@ class Application:
         out = top.process_event(event)
         assert out is not None
 
+        the_last_message_edit: OutMessage | None = None
+
         while out:
-            logging.info(f"Out: {out}")
+            logging.info(f"Out message: {out}")
+            if out.edit_the_last:
+                the_last_message_edit = out
+            else:
+                buttons_below = None
+                if out.buttons_below is not None:
+                    buttons_below = [
+                        [b.text for b in line] for line in out.buttons_below
+                    ]
 
-            buttons_below = None
-            if out.buttons_below is not None:
-                buttons_below = [[b.text for b in line] for line in out.buttons_below]
-
-            self._send_message(
-                m.user_id,
-                m.user_name,
-                out.text,
-                parse_mode=out.parse_mode,
-                keyboard_below=buttons_below,
-                inline_keyboard=out.buttons,
-            )
+                self._send_message(
+                    m.user_id,
+                    m.user_name,
+                    out.text,
+                    parse_mode=out.parse_mode,
+                    keyboard_below=buttons_below,
+                    inline_keyboard=out.buttons,
+                )
             out = out.next
+
+        return the_last_message_edit.text if the_last_message_edit is not None else None
 
     def _on_incoming_tg_message(self, m: TgIncomingMsg):
         logging.info(f"Got message: {m}")
@@ -188,7 +185,7 @@ class Application:
             m.user_name,
             "We got your order",
         )
-        self._ex.on_new_order(o)
+        self._ex.place_order(o)
 
     def _handle_remove_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_remove_command_params(params, self._ex, m.user_id)
@@ -221,3 +218,15 @@ class Application:
         )
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
         self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))
+
+        # Notify admins
+        if self._tg.admin_contacts is not None:
+            message_for_admins = ["match!"]
+            for attr, value in vars(m).items():
+                message_for_admins.append(f"{attr}:\n{value}")
+            message_for_admins = "\n\n".join(message_for_admins)
+
+            for admin_contact in self._tg.admin_contacts:
+                self._tg.send_message(
+                    TgOutgoingMsg(admin_contact, None, message_for_admins)
+                )

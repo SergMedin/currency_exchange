@@ -37,7 +37,7 @@ class TgOutgoingMsg:
     parse_mode: Optional[str] = None
 
 
-OnMessageType = Callable[[TgIncomingMsg], None]
+OnMessageType = Callable[[TgIncomingMsg], Optional[str]]
 
 
 class Tg:
@@ -58,6 +58,7 @@ class TelegramMock(Tg):
         super().__init__()
         self.outgoing: list[TgOutgoingMsg] = []  # type: ignore
         self.incoming: list[TgIncomingMsg] = []  # type: ignore
+        self.admin_contacts: Optional[list[str]] = None  # type: ignore
 
     def send_message(self, m: TgOutgoingMsg):
         if not isinstance(m, TgOutgoingMsg):
@@ -79,12 +80,12 @@ class TelegramMock(Tg):
 
 class TelegramReal(Tg):
     def __init__(self, token: str):
-        # print(f"token: ...{token[-5:]}")
         self.application: Application = Application.builder().token(token).build()
         self.application.add_handler(
             MessageHandler(filters.TEXT, self._default_handler)
         )
         self.application.add_handler(CallbackQueryHandler(self._callback_query_handler))
+        self.admin_contacts: Optional[list[str]] = None
 
     def run_forever(self):
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
@@ -118,10 +119,6 @@ class TelegramReal(Tg):
         if query is None:
             logging.warning(f"got invalid callback query. Update: {update}")
             return
-        # CallbackQueries need to be answered, even if no notification to the user is needed
-        # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
-        await query.answer()
-        # await query.edit_message_text(text=f"Selected option: {query.data}")
 
         if update.effective_chat is None or update.effective_chat.username is None:
             logging.warning(f"got invalid query callback update. Update: {update}")
@@ -132,11 +129,29 @@ class TelegramReal(Tg):
             "",
             keyboard_callback=query.data,
         )
+
+        replace_text: Optional[str] = None
         try:
-            self.on_message(message)
+            replace_text = self.on_message(message)
         except ValueError as e:
             logging.error(f"Error: {str(e)}")
-            # await update.message.reply_text(f"Error: {str(e)}")
+
+        # CallbackQueries need to be answered, even if no notification to the user is needed
+        # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
+        await query.answer()
+        if replace_text is not None:
+            lines = []
+            if (
+                update.callback_query is not None
+                and update.callback_query.message is not None
+                and update.callback_query.message.text is not None
+            ):
+                lines += [update.callback_query.message.text, ""]
+            s = "PREV + " if lines else ""
+            logging.info(f"replacing text: {s}{replace_text}")
+            lines.append(replace_text)
+            text = "\n".join(lines)
+            await query.edit_message_text(text=text, parse_mode="Markdown")
 
     def send_message(self, m: TgOutgoingMsg):
         reply_markup: Any = None

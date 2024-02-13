@@ -46,7 +46,7 @@ class Exchange:
     def __del__(self):
         self.dtor()
 
-    def on_new_order(self, o: data.Order) -> None:
+    def place_order(self, o: data.Order) -> None:
         if o.lifetime_sec > ORDER_LIFETIME_LIMIT:
             raise ValueError("Order lifetime cannot exceed 48 hours")
 

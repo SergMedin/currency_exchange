@@ -50,6 +50,9 @@ class OutMessage:
     next: Optional["OutMessage"] = None
     parse_mode: Optional[str] = None
     buttons_below: Optional[list[list[Button]]] = None
+    edit_the_last: bool = (
+        False  # Indicates that the message should be sent as an edit to the last one
+    )
 
     def __add__(self, other: "OutMessage") -> "OutMessage":
         insert_after = self
@@ -60,7 +63,8 @@ class OutMessage:
 
     def __repr__(self) -> str:
         next = "..." if self.next else None
-        return f"OutMessage(text={self.text[:30]}, next={next}, parse_mode={self.parse_mode}, buttons={self.buttons}, buttons_below={self.buttons_below})"
+        s_edit = " EDIT" if self.edit_the_last else ""
+        return f"OutMessage(text={repr(self.text[:30])}, next={next}, parse_mode={self.parse_mode}, buttons={repr(self.buttons)}, buttons_below={repr(self.buttons_below)}{s_edit})"
 
 
 @dataclass
@@ -104,6 +108,13 @@ class Controller:
         if self.child:
             return self.child.get_current_active()
         return self
+
+    def get_button_by_action(self, action: str) -> Optional[Button]:
+        for line in self.buttons:
+            for button in line:
+                if button.action == action:
+                    return button
+        return None
 
 
 @dataclass
