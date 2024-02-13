@@ -1,3 +1,4 @@
+from typing import Optional
 from decimal import Decimal
 import datetime
 import os
@@ -35,7 +36,7 @@ class Application:
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
 
-        # FIXME: should be persistent, LRU with limit, created only when needed
+        # FIXME: should be (1) persistent, (2) LRU with limit, (3) created only when really needed
         self._sessions: dict[int, dialogs.Main] = {}
 
         # FIXME: move it out of here
@@ -94,7 +95,7 @@ class Application:
         )
         self._tg.send_message(m)
 
-    def _process_incoming_tg_message(self, m: TgIncomingMsg):
+    def _process_incoming_tg_message(self, m: TgIncomingMsg) -> Optional[str]:
         if m.user_id < 0:
             raise ValueError("We don't work with groups yet")
 
@@ -131,22 +132,30 @@ class Application:
         out = top.process_event(event)
         assert out is not None
 
+        the_last_message_edit: OutMessage | None = None
+
         while out:
-            logging.info(f"Out: {out}")
+            logging.info(f"Out message: {out}")
+            if out.edit_the_last:
+                the_last_message_edit = out
+            else:
+                buttons_below = None
+                if out.buttons_below is not None:
+                    buttons_below = [
+                        [b.text for b in line] for line in out.buttons_below
+                    ]
 
-            buttons_below = None
-            if out.buttons_below is not None:
-                buttons_below = [[b.text for b in line] for line in out.buttons_below]
-
-            self._send_message(
-                m.user_id,
-                m.user_name,
-                out.text,
-                parse_mode=out.parse_mode,
-                keyboard_below=buttons_below,
-                inline_keyboard=out.buttons,
-            )
+                self._send_message(
+                    m.user_id,
+                    m.user_name,
+                    out.text,
+                    parse_mode=out.parse_mode,
+                    keyboard_below=buttons_below,
+                    inline_keyboard=out.buttons,
+                )
             out = out.next
+
+        return the_last_message_edit.text if the_last_message_edit is not None else None
 
     def _on_incoming_tg_message(self, m: TgIncomingMsg):
         logging.info(f"Got message: {m}")

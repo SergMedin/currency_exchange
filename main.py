@@ -22,7 +22,7 @@ if __name__ == "__main__":
         "GOOGLE_SPREADSHEET_KEY", "1k8yMmPNPwvyeknaGV0MGrVI2gfPFZ4hgH0yq-44xNJU"
     )
     telegram = TelegramReal(token=tg_token)
-    currency_client = CurrencyFreaksClient(os.getenv("EXCH_CURRENCYFREAKS_TOKEN"))
+    currency_client = CurrencyFreaksClient(os.environ["EXCH_CURRENCYFREAKS_TOKEN"])
 
     admin_contacts_raw = os.getenv("ADMINS_TG", None)
     if admin_contacts_raw is not None:
