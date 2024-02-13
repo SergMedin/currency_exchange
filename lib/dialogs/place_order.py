@@ -55,7 +55,7 @@ class ChooseOrderTypeStep(ExchgController):
                 res = self.close()
             else:
                 res = self.render()
-            res = self.amend_last(e.name, res)
+            res = self.edit_last(e.name, res)
         else:
             res = self.render()
         return res
@@ -131,7 +131,7 @@ class EnterPriceStep(ExchgController):
             else:
                 logging.error(f"EnterPriceStep: Unknown action: {e.name}")
                 res = self.render()
-            return self.amend_last(e.name, res)
+            return self.edit_last(e.name, res)
         return self.render()
 
     def on_child_closed(self, child: Controller) -> OutMessage:
@@ -192,7 +192,7 @@ class EnterRelativeRateStep(ExchgController):
             else:
                 logging.error(f"EnterRelativeRateStep: Unknown action: {e.name}")
                 res = self.render()
-            return self.amend_last(e.name, res)
+            return self.edit_last(e.name, res)
         logging.error(f"EnterRelativeRateStep: Unknown event: {e}")
         return self.render()
 
@@ -236,7 +236,7 @@ class SetMinOpThresholdStep(ExchgController):
             else:
                 logging.error(f"SetMinOpThresholdStep: Unknown action: {e.name}")
                 res = self.render()
-            return self.amend_last(e.name, res)
+            return self.edit_last(e.name, res)
         logging.error(f"SetMinOpThresholdStep: Unknown event: {e}")
         return self.render()
 
@@ -343,7 +343,7 @@ class ConfirmOrderStep(ExchgController):
             else:
                 logging.error(f"ConfirmOrderStep: Unknown action: {e.name}")
                 res = self.render()
-            return self.amend_last(e.name, res)
+            return self.edit_last(e.name, res)
         logging.error(f"ConfirmOrderStep: Unknown event: {e}")
         return self.render()
 

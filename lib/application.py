@@ -132,16 +132,18 @@ class Application:
         out = top.process_event(event)
         assert out is not None
 
-        the_last_message_amendment: OutMessage | None = None
+        the_last_message_edit: OutMessage | None = None
 
         while out:
             logging.info(f"Out message: {out}")
-            if out.amend_the_last:
-                the_last_message_amendment = out
+            if out.edit_the_last:
+                the_last_message_edit = out
             else:
                 buttons_below = None
                 if out.buttons_below is not None:
-                    buttons_below = [[b.text for b in line] for line in out.buttons_below]
+                    buttons_below = [
+                        [b.text for b in line] for line in out.buttons_below
+                    ]
 
                 self._send_message(
                     m.user_id,
@@ -153,11 +155,7 @@ class Application:
                 )
             out = out.next
 
-        return (
-            the_last_message_amendment.text
-            if the_last_message_amendment is not None
-            else None
-        )
+        return the_last_message_edit.text if the_last_message_edit is not None else None
 
     def _on_incoming_tg_message(self, m: TgIncomingMsg):
         logging.info(f"Got message: {m}")

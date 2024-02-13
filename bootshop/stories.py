@@ -50,8 +50,8 @@ class OutMessage:
     next: Optional["OutMessage"] = None
     parse_mode: Optional[str] = None
     buttons_below: Optional[list[list[Button]]] = None
-    amend_the_last: bool = (
-        False  # Indicates that the message should be sent as an amendment to the last one
+    edit_the_last: bool = (
+        False  # Indicates that the message should be sent as an edit to the last one
     )
 
     def __add__(self, other: "OutMessage") -> "OutMessage":
@@ -63,7 +63,7 @@ class OutMessage:
 
     def __repr__(self) -> str:
         next = "..." if self.next else None
-        return f"OutMessage(text={repr(self.text[:30])}, next={next}, parse_mode={self.parse_mode}, buttons={repr(self.buttons)}, buttons_below={repr(self.buttons_below)}{" AMEND" if self.amend_the_last else ""})"
+        return f"OutMessage(text={repr(self.text[:30])}, next={next}, parse_mode={self.parse_mode}, buttons={repr(self.buttons)}, buttons_below={repr(self.buttons_below)}{" EDIT" if self.edit_the_last else ""})"
 
 
 @dataclass
