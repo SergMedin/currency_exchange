@@ -112,11 +112,11 @@ class Exchange:
 
         sellers = sorted(
             [o for o in self._orders.values() if o.type == data.OrderType.SELL],
-            key=lambda x: x.creation_time,
+            key=lambda x: x.price,
         )
         buyers = sorted(
             [o for o in self._orders.values() if o.type == data.OrderType.BUY],
-            key=lambda x: x.creation_time,
+            key=lambda x: -x.price,
         )
 
         logging.debug(f"S: {sellers}\nB: {buyers}\n")
