@@ -47,8 +47,11 @@ class Exchange:
         self.dtor()
 
     def place_order(self, o: data.Order) -> None:
+        logging.info(f"place_order: {o}")
         if o.lifetime_sec > ORDER_LIFETIME_LIMIT:
-            raise ValueError("Order lifetime cannot exceed 48 hours")
+            raise ValueError(
+                f"Order lifetime cannot exceed {int(ORDER_LIFETIME_LIMIT/3600)} hours"
+            )
 
         o = self._db.store_order(o)
         self._update_prices()  # FIXME: workaround to not to force clients to calculate prices

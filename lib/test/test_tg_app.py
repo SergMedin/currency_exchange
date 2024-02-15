@@ -47,7 +47,7 @@ class TestTgApp(unittest.TestCase):
 
     def test_statistic_button(self):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="statistics")
-        self.assertEqual(1, len(self.tg.outgoing))
+        self.assertEqual(2, len(self.tg.outgoing))
         m = self.tg.outgoing[-1]
         self.assertIn("Current exchange rate:", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
@@ -56,9 +56,9 @@ class TestTgApp(unittest.TestCase):
 
     def test_my_orders_button(self):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="my_orders")
-        self.assertEqual(2, len(self.tg.outgoing))
-        m = self.tg.outgoing[0]
-        self.assertIn("У вас нет активных заявок", m.text)
+        self.assertEqual(3, len(self.tg.outgoing))
+        self.assertEqual(1, self.tg.outgoing[0].edit_message_with_id)
+        self.assertIn("У вас нет активных заявок", self.tg.outgoing[1].text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
         self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)

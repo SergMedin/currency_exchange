@@ -49,17 +49,6 @@ class Order:
         if self.amount_left == -1.0:
             self.amount_left = self.amount_initial
 
-    def __str__(self):
-        text = (
-            f"\tuser: @{self.user.name} ({self.user.id})\n"
-            f"\tprice: {self.price:.4f} AMD/RUB\n"
-            f"\tamount_initial: {self.amount_initial:.2f} RUB\n"
-            f"\tamount_left: {self.amount_left:.2f} RUB\n"
-            f"\tmin_op_threshold: {self.min_op_threshold:.2f} RUB\n"
-            f"\tlifetime_sec: {self.lifetime_sec//3600} hours"
-        )
-        return text
-
 
 @dataclasses.dataclass
 class Match:
