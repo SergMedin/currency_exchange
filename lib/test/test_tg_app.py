@@ -72,6 +72,11 @@ class TestTgApp(unittest.TestCase):
         )
         # four messages: two about the added orders, two about the match
         self.assertEqual(4 + len(self.tg.admin_contacts), len(self.tg.outgoing))
+        self.assertTrue(
+            "match!\n\nsell_order:\n\tuser: @Joe (1)\n\tprice: 98.1000 AMD/RUB\n\tamount_initial: 1500.00 RUB\n"
+            "\tamount_left: 0.00 RUB\n\tmin_op_threshold: 100.00 RUB\n\tlifetime_sec: 1 hours"
+            in self.tg.outgoing[-1].text,
+        )
 
     def test_simple_no_match(self):
         self.tg.emulate_incoming_message(

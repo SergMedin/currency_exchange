@@ -158,7 +158,7 @@ class TelegramReal(Tg):
         try:
             replies = self.on_message(message)
         except ValueError as e:
-            logging.error(f"_callback_query_handler: exception: {str(e)}")
+            logging.exception(f"_callback_query_handler: exception: {e}")
         else:
             # FIXME: the text building should eventually go away and the responsibility should be moved to the controller which should take text from LRU messages cache
             edits = [m for m in replies if m.edit_message_with_id is not None]

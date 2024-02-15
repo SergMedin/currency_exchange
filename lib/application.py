@@ -223,11 +223,26 @@ class Application:
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
         self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))
 
+        def render_order(o: Order) -> str:
+            return (
+                f"\tuser: @{o.user.name} ({o.user.id})\n"
+                f"\tprice: {o.price:.4f} AMD/RUB\n"
+                f"\tamount_initial: {o.amount_initial:.2f} RUB\n"
+                f"\tamount_left: {o.amount_left:.2f} RUB\n"
+                f"\tmin_op_threshold: {o.min_op_threshold:.2f} RUB\n"
+                f"\tlifetime_sec: {o.lifetime_sec//3600} hours"
+            )
+
         # Notify admins
         if self._tg.admin_contacts is not None:
             message_for_admins = ["match!"]
             for attr, value in vars(m).items():
-                message_for_admins.append(f"{attr}:\n{value}")
+                value_s = (
+                    render_order(value)
+                    if attr in ["sell_order", "buy_order"]
+                    else value
+                )
+                message_for_admins.append(f"{attr}:\n{value_s}")
             message_for_admins = "\n\n".join(message_for_admins)
 
             for admin_contact in self._tg.admin_contacts:
