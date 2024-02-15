@@ -64,7 +64,7 @@ class Main(ExchgController):
                 child = self._a2c[name](self)
             except KeyError:
                 return OutMessage(f"Неизвестная команда: {e.name}") + self.render()
-            return self.edit_last(name, self.show_child(child))
+            return self.edit_last(e, self.show_child(child))
         raise NotImplementedError()
 
     def _start(self) -> OutMessage:
@@ -122,7 +122,7 @@ class MyOrders(ExchgController):
 
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, ButtonAction):
-            return self.edit_last(e.name, self.close())
+            return self.edit_last(e, self.close())
         return self.close()
 
 
@@ -145,7 +145,7 @@ class Statistics(ExchgController):
 
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, ButtonAction):
-            return self.edit_last(e.name, self.close())
+            return self.edit_last(e, self.close())
         return self.close()
 
 
@@ -161,5 +161,5 @@ class Help(ExchgController):
 
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, ButtonAction):
-            return self.edit_last(e.name, self.close())
+            return self.edit_last(e, self.close())
         return self.close()

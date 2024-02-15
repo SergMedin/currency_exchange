@@ -95,7 +95,7 @@ class Application:
         )
         self._tg.send_message(m)
 
-    def _process_incoming_tg_message(self, m: TgIncomingMsg) -> Optional[str]:
+    def _process_incoming_tg_message(self, m: TgIncomingMsg) -> list[TgOutgoingMsg]:
         if m.user_id < 0:
             raise ValueError("We don't work with groups yet")
 
@@ -110,7 +110,7 @@ class Application:
         event: ButtonAction | Command | Message
 
         if m.keyboard_callback:
-            event = ButtonAction(m.user_id, name=m.keyboard_callback)
+            event = ButtonAction(m.message_id, m.user_id, name=m.keyboard_callback)
         elif m.text.startswith("/"):
             # FIXME: args must not be converted to lower
             pp = m.text.lower().strip().split(" ")
@@ -119,50 +119,54 @@ class Application:
 
             # FIXME: remove this
             if command == "/add":
-                return self._handle_add_command(m, args)
+                self._handle_add_command(m, args)
+                return []
             elif command == "/remove":
-                return self._handle_remove_command(m, args)
+                self._handle_remove_command(m, args)
+                return []
 
             command = command[1:]
-            event = Command(m.user_id, name=command, args=args)
+            event = Command(m.message_id, m.user_id, name=command, args=args)
         else:
-            event = Message(m.user_id, text=m.text)
+            event = Message(m.message_id, m.user_id, text=m.text)
 
         logging.info(f"Event: {event}; top: {top}")
         out = top.process_event(event)
         assert out is not None
 
-        the_last_message_edit: OutMessage | None = None
-
+        tg_out_messages: list[TgOutgoingMsg] = []
         while out:
             logging.info(f"Out message: {out}")
-            if out.edit_the_last:
-                the_last_message_edit = out
-            else:
-                buttons_below = None
-                if out.buttons_below is not None:
-                    buttons_below = [
-                        [b.text for b in line] for line in out.buttons_below
-                    ]
-
-                self._send_message(
-                    m.user_id,
-                    m.user_name,
-                    out.text,
-                    parse_mode=out.parse_mode,
-                    keyboard_below=buttons_below,
-                    inline_keyboard=out.buttons,
-                )
+            keyboard_below = None
+            if out.buttons_below is not None:
+                keyboard_below = [[b.text for b in line] for line in out.buttons_below]
+            inline_keyboard = None
+            if out.buttons:
+                inline_keyboard = [
+                    [InlineKeyboardButton(b.text, callback_data=b.action) for b in line]
+                    for line in out.buttons
+                ]
+            tg_out = TgOutgoingMsg(
+                m.user_id,
+                m.user_name,
+                out.text,
+                keyboard_below=keyboard_below,
+                parse_mode=out.parse_mode,
+                inline_keyboard=inline_keyboard,
+                edit_message_with_id=out.edit_message_with_id,
+            )
+            tg_out_messages.append(tg_out)
             out = out.next
 
-        return the_last_message_edit.text if the_last_message_edit is not None else None
+        return tg_out_messages
 
-    def _on_incoming_tg_message(self, m: TgIncomingMsg):
+    def _on_incoming_tg_message(self, m: TgIncomingMsg) -> list[TgOutgoingMsg]:
         logging.info(f"Got message: {m}")
         try:
-            return self._process_incoming_tg_message(m)
+            res = self._process_incoming_tg_message(m)
         except ValueError as e:
-            self._send_message(m.user_id, m.user_name, f"Error: {str(e)}")
+            res = [TgOutgoingMsg(m.user_id, m.user_name, f"Error: {str(e)}")]
+        return res
 
     def _handle_add_command(self, m: TgIncomingMsg, params: list):
         self._validator.validate_add_command_params(params)
@@ -219,11 +223,26 @@ class Application:
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
         self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))
 
+        def render_order(o: Order) -> str:
+            return (
+                f"\tuser: @{o.user.name} ({o.user.id})\n"
+                f"\tprice: {o.price:.4f} AMD/RUB\n"
+                f"\tamount_initial: {o.amount_initial:.2f} RUB\n"
+                f"\tamount_left: {o.amount_left:.2f} RUB\n"
+                f"\tmin_op_threshold: {o.min_op_threshold:.2f} RUB\n"
+                f"\tlifetime_sec: {o.lifetime_sec//3600} hours"
+            )
+
         # Notify admins
         if self._tg.admin_contacts is not None:
             message_for_admins = ["match!"]
             for attr, value in vars(m).items():
-                message_for_admins.append(f"{attr}:\n{value}")
+                value_s = (
+                    render_order(value)
+                    if attr in ["sell_order", "buy_order"]
+                    else value
+                )
+                message_for_admins.append(f"{attr}:\n{value_s}")
             message_for_admins = "\n\n".join(message_for_admins)
 
             for admin_contact in self._tg.admin_contacts:
