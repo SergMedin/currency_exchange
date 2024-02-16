@@ -1,0 +1,3 @@
+[submodule "botlib"]
+	path = botlib
+	url = git@github.com:fantamp/botlib.git
