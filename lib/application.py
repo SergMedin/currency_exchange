@@ -5,7 +5,7 @@ import os
 import logging
 
 
-from bootshop.stories import (
+from .botlib.stories import (
     OutMessage,
     Command,
     Message,
@@ -15,7 +15,7 @@ from bootshop.stories import (
 from . import dialogs
 from . import business_rules
 from .db import Db
-from .tg import Tg, TgIncomingMsg, TgOutgoingMsg, InlineKeyboardButton
+from .botlib.tg import Tg, TgIncomingMsg, TgOutgoingMsg, InlineKeyboardButton
 from .exchange import Exchange
 from .gsheets_loger import GSheetsLoger
 from .data import Match, Order, User, OrderType

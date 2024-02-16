@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import os
 import logging
-from bootshop.stories import (
+from ..botlib.stories import (
     Controller,
     Event,
     OutMessage,

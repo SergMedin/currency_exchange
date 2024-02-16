@@ -2,7 +2,7 @@ import unittest
 import os
 
 from ..application import Application
-from ..tg import TelegramMock
+from ..botlib.tg import TelegramMock
 from ..currency_rates import CurrencyMockClient
 from ..db_sqla import SqlDb
 
