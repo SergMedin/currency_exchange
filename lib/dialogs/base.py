@@ -1,6 +1,6 @@
 from typing import Any, Optional
 from dataclasses import dataclass
-from bootshop.stories import Controller, OutMessage, ButtonAction
+from ..botlib.stories import Controller, OutMessage, ButtonAction
 from .session import Session
 
 

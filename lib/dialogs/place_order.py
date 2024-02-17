@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 import decimal
 import logging
-from bootshop.stories import (
+from ..botlib.stories import (
     Controller,
     Event,
     OutMessage,
