@@ -2,7 +2,7 @@
 
 from dotenv import load_dotenv
 import os
-from lib.tg import TelegramReal
+from lib.botlib.tg import TelegramReal
 from lib.currency_rates import CurrencyFreaksClient
 from lib.application import Application
 from lib.db_sqla import SqlDb
