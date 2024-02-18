@@ -14,10 +14,15 @@ class TestTgApp(unittest.TestCase):
             os.remove("./tg_data/app_db.json")
 
     def setUp(self):
+        self.admin_contacts = [3, 4, 5]
         self.tg = TelegramMock()
-        self.tg.admin_contacts = [3, 4, 5]
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg, currency_client=CurrencyMockClient())
+        self.app = Application(
+            self.db,
+            self.tg,
+            currency_client=CurrencyMockClient(),
+            admin_contacts=self.admin_contacts,
+        )
 
     def test_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
@@ -71,7 +76,7 @@ class TestTgApp(unittest.TestCase):
             2, "Dow", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
         )
         # four messages: two about the added orders, two about the match
-        self.assertEqual(4 + len(self.tg.admin_contacts), len(self.tg.outgoing))
+        self.assertEqual(4 + len(self.admin_contacts), len(self.tg.outgoing))
         self.assertTrue(
             "match!\n\nsell_order:\n\tuser: @Joe (1)\n\tprice: 98.1000 AMD/RUB\n\tamount_initial: 1500.00 RUB\n"
             "\tamount_left: 0.00 RUB\n\tmin_op_threshold: 100.00 RUB\n\tlifetime_sec: 1 hours"
@@ -101,10 +106,10 @@ class TestTgApp(unittest.TestCase):
             100, "Kate", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
         )
         # six messages: four about the added orders, two about the match, two messages for admins
-        self.assertEqual(6 + len(self.tg.admin_contacts), len(self.tg.outgoing))
+        self.assertEqual(6 + len(self.admin_contacts), len(self.tg.outgoing))
         self.assertIn(
             "по цене 98.1000 за единицу",
-            self.tg.outgoing[-1 - len(self.tg.admin_contacts)].text,
+            self.tg.outgoing[-1 - len(self.admin_contacts)].text,
         )
 
     def test_check_price_valid(self):

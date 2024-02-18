@@ -31,7 +31,9 @@ class Application:
         currency_client: CurrencyFreaksClient | CurrencyMockClient,
         zmq_orders_log_endpoint=None,
         log_spreadsheet_key=None,
+        admin_contacts: Optional[list[int]] = None,
     ):
+        self._admin_contacts = admin_contacts
         self._db = db
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
@@ -222,7 +224,9 @@ class Application:
         )
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
         self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))
+        self._notyfy_admins(m)
 
+    def _notyfy_admins(self, m: Match):
         def render_order(o: Order) -> str:
             return (
                 f"\tuser: @{o.user.name} ({o.user.id})\n"
@@ -233,19 +237,16 @@ class Application:
                 f"\tlifetime_sec: {o.lifetime_sec//3600} hours"
             )
 
-        # Notify admins
-        if self._tg.admin_contacts is not None:
-            message_for_admins = ["match!"]
+        if self._admin_contacts:
+            lines = ["match!"]
             for attr, value in vars(m).items():
                 value_s = (
                     render_order(value)
                     if attr in ["sell_order", "buy_order"]
                     else value
                 )
-                message_for_admins.append(f"{attr}:\n{value_s}")
-            message_for_admins = "\n\n".join(message_for_admins)
+                lines.append(f"{attr}:\n{value_s}")
+            message_for_admins = "\n\n".join(lines)
 
-            for admin_contact in self._tg.admin_contacts:
-                self._tg.send_message(
-                    TgOutgoingMsg(admin_contact, None, message_for_admins)
-                )
+            for uid in self._admin_contacts:
+                self._tg.send_message(TgOutgoingMsg(uid, None, message_for_admins))
