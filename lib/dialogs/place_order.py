@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 import decimal
 import logging
+import unittest
 from ..botlib.stories import (
     Controller,
     Event,
@@ -12,6 +13,7 @@ from ..botlib.stories import (
     ButtonAction,
 )
 from lib.data import User, OrderType, Order
+from ..config import ORDER_LIFETIME_LIMIT
 from .base import ExchgController
 
 
@@ -243,12 +245,19 @@ class SetMinOpThresholdStep(ExchgController):
 
 class SetLifetimeStep(ExchgController):
 
-    def __init__(self, parent: Controller):
-        assert parent is not None and isinstance(parent, ConfirmOrderStep)
+    def __init__(self, parent: "ConfirmOrderStep"):
         super().__init__(
             parent=parent,
             text="Укажите время жизни заказа в часах",
-            buttons=[[Button("Назад", "back")]],
+            buttons=[
+                [
+                    Button("12ч", "preset:12"),
+                    Button("24ч", "preset:24"),
+                    Button("3дн", "preset:72"),
+                    Button("7дн", "preset:168"),
+                ],
+                [Button("Назад", "back")],
+            ],
         )
 
     def process_event(self, e: Event) -> OutMessage:
@@ -260,10 +269,8 @@ class SetLifetimeStep(ExchgController):
                         OutMessage("Время жизни заявки должно быть больше 0")
                         + self.render()
                     )
-                assert self.parent is not None and isinstance(
-                    self.parent, ConfirmOrderStep
-                )
-                self.parent.lifetime_sec = lifetime_sec
+                assert isinstance(self.parent, ConfirmOrderStep)
+                self.parent.order.lifetime_sec = lifetime_sec
                 return self.close()
             except ValueError as e:
                 return (
@@ -271,56 +278,78 @@ class SetLifetimeStep(ExchgController):
                     + self.render()
                 )
         elif isinstance(e, ButtonAction):
-            if e.name == "back":
-                return self.close()
+            if e.name.startswith("preset:"):
+                lifetime_sec = int(e.name.split(":")[1]) * 3600
+                assert isinstance(self.parent, ConfirmOrderStep)
+                self.parent.order.lifetime_sec = lifetime_sec
+                res = self.close()
+            elif e.name == "back":
+                res = self.close()
+            else:
+                logging.error(f"SetLifetimeStep: Unknown action: {e.name}")
+                res = self.render()
+            return self.edit_last(e, res)
+        logging.error(f"SetLifetimeStep: Unknown event: {e}")
         return self.close()
+
+
+def _seconds_to_human(seconds: int) -> str:
+    hours = seconds // 3600
+    days = hours // 24
+    hours = hours % 24
+    x = ([] if days <= 0 else [f"{days} д"]) + (
+        [] if hours <= 0 and days > 0 else [f"{hours} ч"]
+    )
+    return ", ".join(x)
 
 
 @dataclass
 class ConfirmOrderStep(ExchgController):
     confirmed: bool = False
-    lifetime_sec: int | None = None
 
-    def __init__(self, parent: Controller):
+    def __init__(self, parent: "CreateOrder"):
         super().__init__(
             parent=parent,
             text="",
             buttons=[
                 [Button("Всё ок, разместить заказ", "place_order")],
                 [Button("Указать мин. сумму сделки", "set_min_op_threshold")],
-                # [Button("Задать время жизни", "set_lifetime")],
+                [Button("Задать время жизни", "set_lifetime")],
                 [Button("Отмена", "cancel")],
             ],
         )
 
+    @property
+    def order(self) -> _OrderDraft:
+        assert isinstance(self.parent, CreateOrder)
+        return self.parent.order
+
     def render(self) -> OutMessage:
-        parent = self.parent
-        assert parent is not None and isinstance(parent, CreateOrder)
-        assert parent.order.type is not None
+        assert isinstance(self.parent, CreateOrder)
+        order = self.parent.order
+        assert order.type is not None
 
         type_name_rus = {"BUY": "покупка", "SELL": "продажа"}.get(
-            parent.order.type.name, parent.order.type.name
+            order.type.name, order.type.name
         )
 
         lines = []
         lines.append("*Подтвердите параметры заказа:*")
         lines.append(f"- Тип: {type_name_rus} рублей")
-        lines.append(f"- Сумма: {parent.order.amount} RUB")
-        if parent.order.price is not None:
-            lines.append(f"- Курс: 1 RUB = {parent.order.price} AMD")
+        lines.append(f"- Сумма: {order.amount} RUB")
+        if order.price is not None:
+            lines.append(f"- Курс: 1 RUB = {order.price} AMD")
         else:
-            assert parent.order.relative_rate is not None
-            lines.append(f"- Относительный курс: {parent.order.relative_rate - 1 :.2%}")
-        lines.append(
-            f"- Мин. сумма сделки: любая"
-            if parent.order.min_op_threshold is None
-            else f"- Мин. сумма сделки: {parent.order.min_op_threshold}"
+            assert order.relative_rate is not None
+            lines.append(f"- Относительный курс: {order.relative_rate - 1 :.2%}")
+        min_op_threshold_s = (
+            "любая" if order.min_op_threshold is None else str(order.min_op_threshold)
         )
-        lines.append(
-            f"- Время жизни заявки: {parent.order.lifetime_sec // 3600} часов"
-            if parent.order.lifetime_sec is not None
-            else "- Время жизни заявки: 30 суток"  # FIXME: hardcoded value
+        lines.append(f"- Мин. сумма сделки: {min_op_threshold_s}")
+        human_lifetime_s = _seconds_to_human(
+            order.lifetime_sec if order.lifetime_sec else ORDER_LIFETIME_LIMIT
         )
+        lines.append(f"- Время жизни заявки: {human_lifetime_s}")
         m = super().render()
         m.text = "\n".join(lines)
         m.parse_mode = "Markdown"
@@ -337,7 +366,7 @@ class ConfirmOrderStep(ExchgController):
                 res = self.close()
             elif e.name == "set_min_op_threshold":
                 assert self.parent is not None and isinstance(self.parent, CreateOrder)
-                res = self.show_child(SetMinOpThresholdStep(self, self.parent.order))
+                res = self.show_child(SetMinOpThresholdStep(self, self.order))
             elif e.name == "set_lifetime":
                 res = self.show_child(SetLifetimeStep(self))
             else:
@@ -393,9 +422,9 @@ class CreateOrder(ExchgController):
                 except AssertionError as e:
                     return OutMessage(f"{e}") + self.show_child(ConfirmOrderStep(self))
                 order.lifetime_sec = (
-                    30 * 24 * 60 * 60
-                    if child.lifetime_sec is None
-                    else child.lifetime_sec  # Fixme: hardcoded value
+                    ORDER_LIFETIME_LIMIT
+                    if order.lifetime_sec is None
+                    else order.lifetime_sec
                 )
                 if order.relative_rate is None:
                     order.relative_rate = Decimal(-1.0)
@@ -426,3 +455,18 @@ class CreateOrder(ExchgController):
 
     def cancel(self):
         return self.close()
+
+
+class T(unittest.TestCase):
+    def test_secs_to_human(self):
+        self.assertEqual(_seconds_to_human(0), "0 ч")
+        self.assertEqual(_seconds_to_human(1), "0 ч")
+        self.assertEqual(_seconds_to_human(3599), "0 ч")
+        self.assertEqual(_seconds_to_human(3600), "1 ч")
+        self.assertEqual(_seconds_to_human(3600 * 24), "1 д")
+        self.assertEqual(_seconds_to_human(3600 * 24 * 7), "7 д")
+        self.assertEqual(_seconds_to_human(3600 * 24 * 7 + 3600), "7 д, 1 ч")
+        self.assertEqual(_seconds_to_human(3600 * 24 * 7 + 3600 + 1), "7 д, 1 ч")
+        self.assertEqual(_seconds_to_human(3600 * 24 * 7 + 3600 + 1), "7 д, 1 ч")
+        self.assertEqual(_seconds_to_human(3600 * 24 * 7 + 3600 + 3599), "7 д, 1 ч")
+        self.assertEqual(_seconds_to_human(3600 * 24 * 7 + 3600 + 3600), "7 д, 2 ч")
