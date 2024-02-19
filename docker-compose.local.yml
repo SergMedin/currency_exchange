@@ -2,7 +2,6 @@ version: '3'
 
 volumes:
   pg_data:
-  tg_data:
 
 services:
   db: 
@@ -28,5 +27,3 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - tg_data:/app/tg_data
