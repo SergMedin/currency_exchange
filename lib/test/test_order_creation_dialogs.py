@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Optional
 import unittest
 import os
@@ -25,8 +26,10 @@ class TestOrderCreationDialogs(unittest.TestCase):
         stop_on_rate=False,
         stop_on_confirm=False,
         set_lifetime_to: Optional[int] = None,
-        set_min_op_threshold_to: Optional[int] = None,
+        set_min_op_threshold_to: Optional[Decimal | str] = None,
         stop_on_lifetime=False,
+        order_amount: Decimal | str = "1111",
+        order_rate: Decimal | str = "4.5",
     ):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="create_order")
         self.assertIn("Выберите тип заказа", self.tg.outgoing[-1].text)
@@ -36,11 +39,11 @@ class TestOrderCreationDialogs(unittest.TestCase):
         self.assertIn("Сколько рублей продаете?", self.tg.outgoing[-1].text)
         if stop_on_amount:
             return
-        self.tg.emulate_incoming_message(1, "Joe", "1111")
+        self.tg.emulate_incoming_message(1, "Joe", order_amount)
         self.assertIn("Введите курс", self.tg.outgoing[-1].text)
         if stop_on_rate:
             return
-        self.tg.emulate_incoming_message(1, "Joe", "4.5")
+        self.tg.emulate_incoming_message(1, "Joe", order_rate)
         self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
         if set_lifetime_to is not None:
             self.tg.emulate_incoming_message(
@@ -122,3 +125,27 @@ class TestMinOpThresholdSetop(TestOrderCreationDialogs):
     def test_enter_manually(self):
         self._create_order(set_min_op_threshold_to=1000, stop_on_confirm=True)
         self.assertIn("сумма сделки: 1000\n", self.tg.outgoing[-1].text)
+
+
+class TestInputNumbersFormatHandling(TestOrderCreationDialogs):
+    def test_dots(self):
+        self._create_order(
+            order_amount="555.1",
+            order_rate="4.5",
+            set_min_op_threshold_to="400,1",
+            stop_on_confirm=True,
+        )
+        self.assertIn("555.1", self.tg.outgoing[-1].text)
+        self.assertIn("4.5", self.tg.outgoing[-1].text)
+        self.assertIn("400.1", self.tg.outgoing[-1].text)
+
+    def test_commas(self):
+        self._create_order(
+            order_amount="555,1",
+            order_rate="4,5",
+            set_min_op_threshold_to="400,1",
+            stop_on_confirm=True,
+        )
+        self.assertIn("555.1", self.tg.outgoing[-1].text)
+        self.assertIn("4.5", self.tg.outgoing[-1].text)
+        self.assertIn("400.1", self.tg.outgoing[-1].text)
