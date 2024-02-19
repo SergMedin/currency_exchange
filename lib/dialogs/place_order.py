@@ -453,7 +453,9 @@ class CreateOrder(ExchgController):
                     return OutMessage(
                         f"Ошибка размещения заказа: {e}"
                     ) + self.show_child(ConfirmOrderStep(self))
-                return OutMessage("Поздравляем! Ваш заказ размещен") + self.close()
+                return (
+                    OutMessage("✅ Поздравляем! Ваш заказ размещен 🎉✨") + self.close()
+                )
         logging.error(f"CreateOrder: Unknown child: {child}, {child.__class__}")
         return self.cancel()
 
