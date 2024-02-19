@@ -2,7 +2,7 @@ import unittest
 import os
 
 from ..application import Application
-from ..tg import TelegramMock
+from ..botlib.tg import TelegramMock
 from ..currency_rates import CurrencyMockClient
 from ..db_sqla import SqlDb
 
@@ -14,10 +14,15 @@ class TestTgApp(unittest.TestCase):
             os.remove("./tg_data/app_db.json")
 
     def setUp(self):
+        self.admin_contacts = [3, 4, 5]
         self.tg = TelegramMock()
-        self.tg.admin_contacts = [3, 4, 5]
         self.db = SqlDb()
-        self.app = Application(self.db, self.tg, currency_client=CurrencyMockClient())
+        self.app = Application(
+            self.db,
+            self.tg,
+            currency_client=CurrencyMockClient(),
+            admin_contacts=self.admin_contacts,
+        )
 
     def test_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
@@ -47,7 +52,7 @@ class TestTgApp(unittest.TestCase):
 
     def test_statistic_button(self):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="statistics")
-        self.assertEqual(1, len(self.tg.outgoing))
+        self.assertEqual(2, len(self.tg.outgoing))
         m = self.tg.outgoing[-1]
         self.assertIn("Current exchange rate:", m.text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
@@ -56,9 +61,9 @@ class TestTgApp(unittest.TestCase):
 
     def test_my_orders_button(self):
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="my_orders")
-        self.assertEqual(2, len(self.tg.outgoing))
-        m = self.tg.outgoing[0]
-        self.assertIn("У вас нет активных заявок", m.text)
+        self.assertEqual(3, len(self.tg.outgoing))
+        self.assertEqual(1, self.tg.outgoing[0].edit_message_with_id)
+        self.assertIn("У вас нет активных заявок", self.tg.outgoing[1].text)
         self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
         m = self.tg.outgoing[-1]
         self.assertEqual("create_order", m.inline_keyboard[0][0].callback_data)
@@ -71,7 +76,12 @@ class TestTgApp(unittest.TestCase):
             2, "Dow", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
         )
         # four messages: two about the added orders, two about the match
-        self.assertEqual(4 + len(self.tg.admin_contacts), len(self.tg.outgoing))
+        self.assertEqual(4 + len(self.admin_contacts), len(self.tg.outgoing))
+        self.assertTrue(
+            "match!\n\nsell_order:\n\tuser: @Joe (1)\n\tprice: 98.1000 AMD/RUB\n\tamount_initial: 1500.00 RUB\n"
+            "\tamount_left: 0.00 RUB\n\tmin_op_threshold: 100.00 RUB\n\tlifetime_sec: 1 hours"
+            in self.tg.outgoing[-1].text,
+        )
 
     def test_simple_no_match(self):
         self.tg.emulate_incoming_message(
@@ -96,10 +106,10 @@ class TestTgApp(unittest.TestCase):
             100, "Kate", "/add BUY 1500 RUB * 98.1 AMD min_amt 100 lifetime_h 1"
         )
         # six messages: four about the added orders, two about the match, two messages for admins
-        self.assertEqual(6 + len(self.tg.admin_contacts), len(self.tg.outgoing))
+        self.assertEqual(6 + len(self.admin_contacts), len(self.tg.outgoing))
         self.assertIn(
             "по цене 98.1000 за единицу",
-            self.tg.outgoing[-1 - len(self.tg.admin_contacts)].text,
+            self.tg.outgoing[-1 - len(self.admin_contacts)].text,
         )
 
     def test_check_price_valid(self):

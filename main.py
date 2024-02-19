@@ -2,7 +2,7 @@
 
 from dotenv import load_dotenv
 import os
-from lib.tg import TelegramReal
+from lib.botlib.tg import TelegramReal
 from lib.currency_rates import CurrencyFreaksClient
 from lib.application import Application
 from lib.db_sqla import SqlDb
@@ -24,10 +24,12 @@ if __name__ == "__main__":
     telegram = TelegramReal(token=tg_token)
     currency_client = CurrencyFreaksClient(os.environ["EXCH_CURRENCYFREAKS_TOKEN"])
 
-    admin_contacts_raw = os.getenv("ADMINS_TG", None)
-    if admin_contacts_raw is not None:
-        admin_contacts_raw = list(map(int, admin_contacts_raw.strip().split(",")))
-    telegram.admin_contacts = admin_contacts_raw
+    try:
+        admin_contacts_raw = os.environ["ADMINS_TG"]
+    except KeyError:
+        admin_contacts = None
+    else:
+        admin_contacts = list(map(int, admin_contacts_raw.strip().split(",")))
 
     app = Application(
         db=SqlDb(conn_str),
@@ -35,6 +37,7 @@ if __name__ == "__main__":
         currency_client=currency_client,
         zmq_orders_log_endpoint=zmq_orders_log_endpoint,
         log_spreadsheet_key=spr_key,
+        admin_contacts=admin_contacts,
     )
 
     print("Wating for TG messages")

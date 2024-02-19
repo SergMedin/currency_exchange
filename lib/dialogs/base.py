@@ -1,6 +1,6 @@
 from typing import Any, Optional
 from dataclasses import dataclass
-from bootshop.stories import Controller, OutMessage
+from ..botlib.stories import Controller, OutMessage, ButtonAction
 from .session import Session
 
 
@@ -20,10 +20,15 @@ class ExchgController(Controller):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}"
 
-    def edit_last(self, btn_action_name: str | None, msg: OutMessage) -> "OutMessage":
-        btn = self.get_button_by_action(btn_action_name) if btn_action_name else None
-        if btn:
-            msg = msg + OutMessage(
-                text=f"*— {btn.text}*", edit_the_last=True, parse_mode="Markdown"
-            )
+    def edit_last(self, btn_event: ButtonAction, msg: OutMessage) -> "OutMessage":
+        if btn_event.message_id is not None:
+            btn = self.get_button_by_action(btn_event.name)
+            if btn:
+                msg = (
+                    OutMessage(
+                        text=f"*— {btn.text}*",
+                        edit_message_with_id=btn_event.message_id,
+                    )
+                    + msg
+                )
         return msg

@@ -77,6 +77,23 @@ class T(unittest.TestCase):
         self.assertEqual(self.matches[1].sell_order.amount_left, 0)
         self.assertEqual(self.matches[1].buy_order.amount_left, 0)
 
+    def testProcessMatchesCorrectPriotiry(self):
+        self.exchange.place_order(
+            Order(User(1), OrderType.SELL, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60)
+        )
+        self.exchange.place_order(
+            Order(User(2), OrderType.SELL, 8.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60)
+        )
+        self.exchange.place_order(
+            Order(User(3), OrderType.BUY, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60)
+        )
+        self.assertEqual(len(self.matches), 1)
+        self.assertEqual(len(self.exchange._orders), 1)
+        self.assertEqual(
+            self.exchange._orders[list(self.exchange._orders.keys())[0]].price,
+            Decimal(10),
+        )
+
     def testProcessMatchesMultipleMatches2(self):
         self.exchange.place_order(
             Order(User(1), OrderType.BUY, 10.0, 50.0, 50.0, lifetime_sec=48 * 60 * 60)
