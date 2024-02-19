@@ -132,7 +132,7 @@ class TestInputNumbersFormatHandling(TestOrderCreationDialogs):
         self._create_order(
             order_amount="555.1",
             order_rate="4.5",
-            set_min_op_threshold_to="400,1",
+            set_min_op_threshold_to="400.1",
             stop_on_confirm=True,
         )
         self.assertIn("555.1", self.tg.outgoing[-1].text)
