@@ -63,6 +63,10 @@ class ChooseOrderTypeStep(ExchgController):
         return res
 
 
+def _str2dec(s: str) -> Decimal:
+    return Decimal(s.replace(",", "."))
+
+
 @dataclass
 class EnterAmountStep(ExchgController):
     amount: Decimal | None = None
@@ -82,7 +86,7 @@ class EnterAmountStep(ExchgController):
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, Message):
             try:
-                amount = Decimal(e.text)
+                amount = _str2dec(e.text)
                 if amount <= 0:
                     return OutMessage("Сумма должна быть более 0") + self.render()
                 assert self.parent is not None
@@ -112,7 +116,7 @@ class EnterPriceStep(ExchgController):
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, Message):
             try:
-                price = Decimal(e.text)
+                price = _str2dec(e.text)
                 if price <= 0:
                     return (
                         OutMessage("Курс обмена должен быть больше 0") + self.render()
@@ -171,7 +175,7 @@ class EnterRelativeRateStep(ExchgController):
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, Message):
             try:
-                rate = Decimal(e.text)
+                rate = _str2dec(e.text)
                 assert self.parent is not None
                 assert isinstance(self.parent, EnterPriceStep)
                 self.parent.relative_rate = rate / Decimal(100) + Decimal(1)
@@ -215,7 +219,7 @@ class SetMinOpThresholdStep(ExchgController):
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, Message):
             try:
-                min_op_threshold = Decimal(e.text)
+                min_op_threshold = _str2dec(e.text)
                 if min_op_threshold <= 0:
                     return (
                         OutMessage("Размер минимальной транзакции должен быть больше 0")
@@ -470,3 +474,10 @@ class T(unittest.TestCase):
         self.assertEqual(_seconds_to_human(3600 * 24 * 7 + 3600 + 1), "7 д, 1 ч")
         self.assertEqual(_seconds_to_human(3600 * 24 * 7 + 3600 + 3599), "7 д, 1 ч")
         self.assertEqual(_seconds_to_human(3600 * 24 * 7 + 3600 + 3600), "7 д, 2 ч")
+
+    def test_str2dec(self):
+        self.assertEqual(_str2dec("1"), Decimal(1))
+        self.assertEqual(_str2dec("1.0"), Decimal(1))
+        self.assertEqual(_str2dec("1,0"), Decimal(1))
+        self.assertEqual(_str2dec("2,1"), Decimal("2.1"))
+        self.assertRaises(decimal.InvalidOperation, _str2dec, "1,0,0")
