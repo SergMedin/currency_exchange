@@ -1,5 +1,7 @@
 *Operating Currency Pair*: The bot is currently operating with only one currency pair: RUB/AMD.
 
+**Order creation is currently unavailable due to user authorization system development**
+
 *Order Matching*: If orders match, they will be automatically closed or their trading amount will be reduced. Users will receive notifications about the possibility to make an exchange. If there is an overlap between the buying and selling prices, the exchange rate will be the average of both.
 
 *Exchange Statistics*
