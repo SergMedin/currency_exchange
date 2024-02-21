@@ -3,21 +3,9 @@
 ## Goals
 Simplify and _partially_ automate the currency exchange process through message recommendations for trading.
 
-## Features
-- Support for RUB-AMD currency pair;
-- Accept messages via a bot for order placement:
-    - Amount
-    - Desired exchange rate
-    - Minimum transaction size
-    - Order duration (up to 48 hours)
-- Provide information about exchange statistics through the bot: minimum selling price and maximum buying price;
-- Find matching orders from users and notify them;
-- Ability to delete one's orders through the bot;
-- When the order expires, it is removed from the list of active orders
-- Data is stored in a database and can be recovered from the DB in case of a Python script failure.
 
 ## Tech
-- [Python] - Python 3.11
+- [Python] - Python 3.12
 
 ## Docker-compose running:
 Fill the .env file and then run command:
@@ -50,9 +38,9 @@ pip install -r requirements.txt
   
 Create .env file and fill it like in example (.env.example)
 
-## Running test
+## Running tests
 ```sh
-./test
+pytest
 ```
 
 ## Running bot
