@@ -14,7 +14,7 @@ from lib.lazy_load import LazyMessageLoader
 from lib.data import User
 from .session import Session
 from .base import ExchgController
-from .place_order import CreateOrder
+# from .place_order import CreateOrder
 
 _help_message_loader = LazyMessageLoader(
     os.path.join(os.path.dirname(__file__), "tg_messages", "help_message.md")
@@ -32,7 +32,7 @@ class Main(ExchgController):
             parse_mode="Markdown",
             buttons=[
                 [
-                    Button("Создать заказ", "create_order"),
+                    # Button("Создать заказ", "create_order"),
                     Button("Мои заявки", "my_orders"),
                 ],
                 [Button("Статистика", "statistics"), Button("Помощь", "help")],
@@ -40,7 +40,7 @@ class Main(ExchgController):
             _session=session,
         )
         self._a2c = {
-            "create_order": CreateOrder,
+            # "create_order": CreateOrder,
             "my_orders": MyOrders,
             "statistics": Statistics,
             "help": Help,
