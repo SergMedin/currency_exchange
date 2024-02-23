@@ -10,14 +10,6 @@ from lib.comms.mailer import EmailAddress, Mailer, MailerMock
 _MAX_ATTEMPTS = 3
 
 
-class EmailAuthMgr:
-    def __init__(self, mailer: Mailer):
-        self._mailer = mailer
-
-    def create_authenticator(self, user_id: RepSysUserId) -> "EmailAuthenticator":
-        return EmailAuthenticatorReal(user_id, self._mailer)
-
-
 class EmailAuthenticator:
     def __init__(
         self, user_id: RepSysUserId, mailer: Mailer, max_attempts: int = _MAX_ATTEMPTS

@@ -1,4 +1,5 @@
 from decimal import Decimal
+import time
 from typing import Optional
 from unittest.mock import patch
 
@@ -7,7 +8,7 @@ from lib.rep_sys.rep_id import RepSysUserId
 from ..application import Application
 from ..botlib.tg import TelegramMock
 from ..currency_rates import CurrencyMockClient
-from ..rep_sys.rep_sys import RepSysMock
+from ..rep_sys.rep_sys import AUTH_REC_VALIDITY_SEC, RepSysMock
 from ..db_sqla import SqlDb
 from .base import ExchgTestBase
 
@@ -30,6 +31,20 @@ class TestMain(ExchgTestBase):
         self.rep_sys.set_authenticity(RepSysUserId(222), True)
         self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="auth")
         self.assertIn("Вы успешно авторизованы", self.tg.outgoing[-1].text)
+
+    def test_auth_expiration(self):
+        self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="auth")
+        with patch("random.randint", return_value=1234):
+            self.tg.emulate_incoming_message(222, "Noob", "a@b")
+        self.tg.emulate_incoming_message(222, "Noob", "1234")
+        self.assertIn("Вы успешно авторизованы", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="ok")
+        with patch("time.time", return_value=time.time() + AUTH_REC_VALIDITY_SEC + 1):
+            self.tg.emulate_incoming_message(
+                222, "Noob", "", keyboard_callback="create_order"
+            )
+            self.assertIn("Вы не авторизованы", self.tg.outgoing[-2].text)
+            self.assertIn("Выберите действие", self.tg.outgoing[-1].text)
 
 
 class TestEnterEmailStep(ExchgTestBase):
