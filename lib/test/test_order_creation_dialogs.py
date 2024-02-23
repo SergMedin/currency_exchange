@@ -1,20 +1,18 @@
 from decimal import Decimal
 from typing import Optional
-import unittest
-import os
 from unittest.mock import patch
+
+from lib.rep_sys.rep_id import RepSysUserId
 
 from ..application import Application
 from ..botlib.tg import TelegramMock
 from ..currency_rates import CurrencyMockClient
+from ..rep_sys.rep_sys import RepSysMock
 from ..db_sqla import SqlDb
+from .base import ExchgTestBase
 
 
-class TestOrderCreationDialogs(unittest.TestCase):
-    def setUp(self):
-        self.tg = TelegramMock()
-        self.db = SqlDb()
-        self.app = Application(self.db, self.tg, currency_client=CurrencyMockClient())
+class TestOrderCreationDialogs(ExchgTestBase):
 
     def test_simple_path(self):
         self._create_order()

@@ -7,6 +7,7 @@ from lib.currency_rates import CurrencyFreaksClient
 from lib.application import Application
 from lib.db_sqla import SqlDb
 from lib.logger import setup_logging
+from lib.rep_sys.rep_sys import RepSysMock
 
 
 if __name__ == "__main__":
@@ -38,6 +39,7 @@ if __name__ == "__main__":
         zmq_orders_log_endpoint=zmq_orders_log_endpoint,
         log_spreadsheet_key=spr_key,
         admin_contacts=admin_contacts,
+        rep_sys=RepSysMock(),
     )
 
     print("Wating for TG messages")
