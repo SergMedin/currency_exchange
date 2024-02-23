@@ -11,13 +11,12 @@ from .botlib.stories import (
     Message,
     ButtonAction,
     Button,
-)  # FIXME: move this stuff to the dedicated repo
+)
 from . import dialogs
 from . import business_rules
 from .db import Db
 from .botlib.tg import Tg, TgIncomingMsg, TgOutgoingMsg, InlineKeyboardButton
 from .exchange import Exchange
-from .gsheets_loger import GSheetsLoger
 from .data import Match, Order, User, OrderType
 from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMockClient
 from .lazy_load import LazyMessageLoader
@@ -31,8 +30,6 @@ class Application:
         tg: Tg,
         currency_client: CurrencyFreaksClient | CurrencyMockClient,
         rep_sys: ReputationSystem,
-        zmq_orders_log_endpoint=None,
-        log_spreadsheet_key=None,
         admin_contacts: Optional[list[int]] = None,
     ):
         self._admin_contacts = admin_contacts
@@ -55,23 +52,8 @@ class Application:
         )
 
         currency_converter = CurrencyConverter(currency_client)
-        self._ex = Exchange(
-            self._db, currency_converter, self._on_match, zmq_orders_log_endpoint
-        )
-
-        # FIXME: no env vars reading stuff should be here
-        if zmq_orders_log_endpoint:
-            assert log_spreadsheet_key is not None
-            worksheet_title = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
-            self._loger = GSheetsLoger(
-                zmq_orders_log_endpoint, log_spreadsheet_key, worksheet_title
-            )
-            self._loger.start()
-
+        self._ex = Exchange(self._db, currency_converter, self._on_match)
         self._validator = business_rules.Validator()
-
-    def shutdown(self):
-        self._loger.stop()
 
     def _send_message(
         self,
