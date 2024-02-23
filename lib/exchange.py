@@ -9,13 +9,18 @@ from decimal import Decimal
 from .db import Db
 from .config import ORDER_LIFETIME_LIMIT
 from . import data
+from .currency_rates import CurrencyConverter
 
 
 class Exchange:
     # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
     def __init__(
-        self, db: Db, currency_client, on_match=None, zmq_orders_log_endpoint=None
+        self,
+        db: Db,
+        currency_converter: CurrencyConverter,
+        on_match=None,
+        zmq_orders_log_endpoint=None,
     ):
         self._db = db
         self._on_match = on_match
@@ -35,7 +40,7 @@ class Exchange:
         self._orders: dict[int, data.Order] = dict(orders)
         self.last_match_price = self._db.get_last_match_price()
 
-        self.currency_converter = currency_client
+        self.currency_converter = currency_converter
         self.currency_rate = self.currency_converter.get_rate("RUB", "AMD")
 
     def dtor(self):
@@ -64,6 +69,9 @@ class Exchange:
 
     def list_orders_for_user(self, user: data.User) -> list[data.Order]:
         return [o for o in self._orders.values() if o.user.id == user.id]
+
+    def get_rate(self, from_currency: str, to_currency: str):
+        return self.currency_converter.get_rate(from_currency, to_currency)
 
     def _check_order_lifetime(self) -> None:
         """

@@ -98,17 +98,26 @@ class EnterAmountStep(ExchgController):
         return self.render()
 
 
+REL_RATE_REFRESH_FREQUENCY_DISCLAIMER = "Бот обновляет биржевой курс несколько раз в день. При скачках на рынках возможны отставания"
+
+
 @dataclass
 class EnterPriceStep(ExchgController):
     price: Decimal | None = None
     relative_rate: Decimal | None = None
 
-    def __init__(self, parent: Controller):
+    def __init__(self, parent: ExchgController):
+        rate = parent.session.exchange.get_rate("RUB", "AMD")
+        rate_s = f"{rate['rate']:.4f}" if rate else "X.XX"
         super().__init__(
             parent=parent,
-            text="Введите курс или выберите опцию 'Относительный курс' чтобы ввести относительный курс",
+            text=(
+                f"{REL_RATE_REFRESH_FREQUENCY_DISCLAIMER}\n"
+                "Введите курс обмена или выберите опцию 'Относительный курс' чтобы ввести относительный курс"
+            ),
             buttons=[
-                [Button("Относительный курс", "relative")],
+                [Button(f"Биржевой (сейчас {rate_s})", "rel:0")],
+                [Button("Указать % от биржевого >>", "relative")],
                 [Button("Отмена", "cancel")],
             ],
         )
@@ -153,9 +162,12 @@ class EnterRelativeRateStep(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Укажите относительный курс биржи в процентах",
+            text=(
+                f"{REL_RATE_REFRESH_FREQUENCY_DISCLAIMER}\n"
+                "Укажите относительный курс биржи в процентах:"
+            ),
             buttons=[
-                [Button("Использовать курс биржи", "rel:0")],
+                [Button("Использовать курс биржи (±0%)", "rel:0")],
                 [
                     Button("-2.0%", "rel:-2"),
                     Button("-1.5%", "rel:-1.5"),
