@@ -34,7 +34,7 @@ class ChooseOrderTypeStep(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Выберите тип заказа: покупка или продажа рублей",
+            text="Выберите тип заявки: покупка или продажа рублей",
             buttons=[
                 [
                     Button("Продать RUB → AMD", "rub_amd"),
@@ -106,7 +106,7 @@ class EnterPriceStep(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Введите курс или выберите опцию 'Относительный курс' чтобы ввести относительный курс",
+            text="Введите курс или выберите опцию 'Относительный курс' чтобы ввести относительный курс. Относительный курс - это курс относительно курса биржи. Курс биржи обновляется раз в сутки.",
             buttons=[
                 [Button("Относительный курс", "relative")],
                 [Button("Отмена", "cancel")],
@@ -252,7 +252,7 @@ class SetLifetimeStep(ExchgController):
     def __init__(self, parent: "ConfirmOrderStep"):
         super().__init__(
             parent=parent,
-            text="Укажите время жизни заказа в часах",
+            text="Укажите время жизни заявки в часах",
             buttons=[
                 [
                     Button("12ч", "preset:12"),
@@ -316,7 +316,7 @@ class ConfirmOrderStep(ExchgController):
             parent=parent,
             text="",
             buttons=[
-                [Button("Всё ок, разместить заказ", "place_order")],
+                [Button("Всё ок, разместить заявку", "place_order")],
                 [Button("Указать мин. сумму сделки", "set_min_op_threshold")],
                 [Button("Задать время жизни", "set_lifetime")],
                 [Button("Отмена", "cancel")],
@@ -338,7 +338,7 @@ class ConfirmOrderStep(ExchgController):
         )
 
         lines = []
-        lines.append("*Подтвердите параметры заказа:*")
+        lines.append("*Подтвердите параметры заявки:*")
         lines.append(f"- Тип: {type_name_rus} рублей")
         lines.append(f"- Сумма: {order.amount} RUB")
         if order.price is not None:
@@ -451,10 +451,11 @@ class CreateOrder(ExchgController):
                 except Exception as e:
                     logging.exception("CreateOrder: Error placing order")
                     return OutMessage(
-                        f"Ошибка размещения заказа: {e}"
+                        f"Ошибка размещения заявки: {e}"
                     ) + self.show_child(ConfirmOrderStep(self))
                 return (
-                    OutMessage("✅ Поздравляем! Ваш заказ размещен 🎉✨") + self.close()
+                    OutMessage("✅ Поздравляем! Ваша заявка размещена 🎉✨")
+                    + self.close()
                 )
         logging.error(f"CreateOrder: Unknown child: {child}, {child.__class__}")
         return self.cancel()

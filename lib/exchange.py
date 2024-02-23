@@ -193,12 +193,12 @@ class Exchange:
             min_seller_price = best_seller.price
             min_seller_min_op_threshold = best_seller.min_op_threshold
             min_seller_text = (
-                f"best seller:\n"
-                f"  * price: {min_seller_price} AMD/RUB\n"
-                f"  * min_op_threshold: {min_seller_min_op_threshold} RUB"
+                f"Лучший продавец:\n"
+                f"  * Цена: {min_seller_price} AMD/RUB\n"
+                f"  * Минимальая сумма для обмена: {min_seller_min_op_threshold} RUB"
             )
         else:
-            min_seller_text = "No sellers :("
+            min_seller_text = "Нет продавцов :("
             min_seller_price = None
             min_seller_min_op_threshold = None
             total_amount_sellers = 0
@@ -209,20 +209,20 @@ class Exchange:
             max_buyer_price = best_buyer.price
             max_buyer_min_op_threshold = best_buyer.min_op_threshold
             max_buyer_text = (
-                f"best buyer:\n"
-                f"  * price: {max_buyer_price} AMD/RUB\n"
-                f"  * min_op_threshold: {max_buyer_min_op_threshold} RUB"
+                f"Лучший покупатель:\n"
+                f"  * Цена: {max_buyer_price} AMD/RUB\n"
+                f"  * Минимальая сумма для обмена: {max_buyer_min_op_threshold} RUB"
             )
         else:
-            max_buyer_text = "No buyers :("
+            max_buyer_text = "Нет покупателей :("
             max_buyer_price = None
             max_buyer_min_op_threshold = None
             total_amount_buyers = 0
 
-        last_match_price_text = "LAST MATCH PRICE:\n" + (
+        last_match_price_text = "Цена последней сделки: " + (
             f"{self.last_match_price} AMD/RUB"
             if self.last_match_price
-            else "No matches yet"
+            else "Сделок ещё не было"
         )
 
         return {

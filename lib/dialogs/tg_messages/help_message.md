@@ -1,16 +1,14 @@
-*Operating Currency Pair*: The bot is currently operating with only one currency pair: RUB/AMD.
+*Валютная пара*: Бот в настоящее время работает только с одной валютной парой: RUB/AMD.
 
-⚠️Order creation is currently unavailable due to user authorization system development
+*Сопоставление заявок*: Если заявки совпадают, они будут автоматически закрыты или их торговый объем будет уменьшен. Пользователи получат уведомления о возможности совершить обмен. Если есть перекрытие между ценами покупки и продажи, курс обмена будет средним между ценами заявок.
 
-*Order Matching*: If orders match, they will be automatically closed or their trading amount will be reduced. Users will receive notifications about the possibility to make an exchange. If there is an overlap between the buying and selling prices, the exchange rate will be the average of both.
+*Статистика обмена*
+Используйте кнопку "Статистика", чтобы получить информацию. Это может быть полезно перед созданием новой заявки.
 
-*Exchange Statistics*
-Use the "Statistics" button to get insights on exchange activities, which can be helpful before creating a new order.
+*Создание заявки*
+Вы можете создавать заявку на покупку или продажу. Срок действия заявки может быть установлен при его создании, значение по умолчанию - 30 дней.
+Для создания заявки используйте кнопку "Создать заявку" и следуйте инструкциям.
 
-*Creating an Order*
-You can create orders to buy or sell. The lifetime of an order can be set when it is created, bthe dedault value is 48 hours.
-To create order use the button "Create order" and follow the instructions
-
-*Listing and Removing Orders*
-- View your orders using "My orders" button.
-- Remove an order with the `/remove <order ID>` command. (will be changed for interactive way in future)
+*Просмотр и удаление заявок*
+- Просмотрите свои заявки, используя кнопку "Мои заявки".
+- Удалить заявку можно с помощью команды `/remove <ID заявки>`.
