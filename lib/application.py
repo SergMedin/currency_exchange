@@ -21,6 +21,7 @@ from .gsheets_loger import GSheetsLoger
 from .data import Match, Order, User, OrderType
 from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMockClient
 from .lazy_load import LazyMessageLoader
+from .rep_sys import ReputationSystem, RepSysUserId
 
 
 class Application:
@@ -29,6 +30,7 @@ class Application:
         db: Db,
         tg: Tg,
         currency_client: CurrencyFreaksClient | CurrencyMockClient,
+        rep_sys: ReputationSystem,
         zmq_orders_log_endpoint=None,
         log_spreadsheet_key=None,
         admin_contacts: Optional[list[int]] = None,
@@ -37,6 +39,7 @@ class Application:
         self._db = db
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
+        self._rep_sys = rep_sys
 
         # FIXME: should be (1) persistent, (2) LRU with limit, (3) created only when really needed
         self._sessions: dict[int, dialogs.Main] = {}
@@ -104,7 +107,10 @@ class Application:
         try:
             _root = self._sessions[m.user_id]
         except KeyError:
-            _root = dialogs.Main(dialogs.Session(m.user_id, m.user_name, self._ex))
+            session = dialogs.Session(
+                m.user_id, m.user_name, self._ex, rep_sys=self._rep_sys
+            )
+            _root = dialogs.Main(session)
             self._sessions[m.user_id] = _root
 
         top = _root.get_current_active()

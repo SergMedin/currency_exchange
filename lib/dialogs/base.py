@@ -2,6 +2,7 @@ from typing import Any, Optional
 from dataclasses import dataclass
 from ..botlib.stories import Controller, OutMessage, ButtonAction
 from .session import Session
+from ..rep_sys import RepSysUserId
 
 
 @dataclass
@@ -32,3 +33,8 @@ class ExchgController(Controller):
                     + msg
                 )
         return msg
+
+    @property
+    def is_authenticated(self) -> bool:
+        rep_id = RepSysUserId(self.session.user_id)
+        return self.session.rep_sys.is_authenticated(rep_id)
