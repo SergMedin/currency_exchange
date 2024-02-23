@@ -28,8 +28,7 @@ _start_message_loader = LazyMessageLoader(
 class Main(ExchgController):
     def __init__(self, session: Session):
         super().__init__(
-            text=("Выберите действие:\n\n⚠️В настоящий момент операции по созданию заявок "
-                  "недоступны. Ведется разработка системы авторизации пользователей"),
+            text="Выберите действие:",
             parse_mode="Markdown",
             buttons=[
                 [
