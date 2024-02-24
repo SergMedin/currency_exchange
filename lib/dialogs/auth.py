@@ -10,7 +10,7 @@ from lib.botlib.stories import (
 from lib.dialogs.base import ExchgController
 from lib.dialogs.place_order import CreateOrder
 from lib.rep_sys.rep_sys import RepSysUserId
-from lib.rep_sys.email_auth import EmlAuthState, TooManyAttemptsError
+from lib.rep_sys.email_auth import EmlAuthState, TooManyAttemptsOrExpiredError
 
 
 class AuthMain(ExchgController):
@@ -107,11 +107,15 @@ class AuthEnterCode(ExchgController):
                     self.session.rep_sys.set_authenticity(
                         RepSysUserId(self.session.user_id), True
                     )
+                    self.session.email_auth.delete()
                     return self.close()
                 else:
                     return OutMessage("Неверный код") + self.render()
-            except TooManyAttemptsError as ex:
-                return OutMessage("Исчерпан лимит количества попыток") + self.close()
+            except TooManyAttemptsOrExpiredError as ex:
+                return (
+                    OutMessage("Исчерпан лимит количества попыток или времени")
+                    + self.close()
+                )
             except Exception as ex:
                 return OutMessage(str(ex)) + self.render()
         else:

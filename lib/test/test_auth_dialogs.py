@@ -99,7 +99,9 @@ class TestEnterCodeStep(ExchgTestBase):
         self.tg.emulate_incoming_message(222, "Noob", "3454")
         self.assertIn("Неверный код", self.tg.outgoing[-2].text)
         self.tg.emulate_incoming_message(222, "Noob", "3454")
-        self.assertIn("Исчерпан лимит количества попыток", self.tg.outgoing[-2].text)
+        self.assertIn(
+            "Исчерпан лимит количества попыток или времени", self.tg.outgoing[-2].text
+        )
         self.assertIn("Введите ваш email", self.tg.outgoing[-1].text)
 
     def test_correct_code(self):
