@@ -43,13 +43,13 @@ class EmailAuthenticator:
 
         code = self._renerate_rnd_code()
 
-        logging.info(f"Sending code {self._code} to {email} ...")
+        logging.info(f"Sending code {code} to {email} ...")
         try:
             self._mailer.send_email(EmailAddress(email), f"Your code is {code}")
         except Exception as e:
             logging.exception(f"Failed to send code to {email}: {e}")
             raise
-        logging.info(f"Sent code {self._code} to {email}")
+        logging.info(f"Sent code {code} to {email}")
 
         self._email = email
         self._code = code
