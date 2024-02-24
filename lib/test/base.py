@@ -5,7 +5,7 @@ from lib.botlib.tg import TelegramMock
 from lib.currency_rates import CurrencyMockClient
 from lib.db_sqla import SqlDb
 from lib.rep_sys.rep_id import RepSysUserId
-from lib.rep_sys.rep_sys import RepSysMock
+from lib.rep_sys.rep_sys import ReputationSystem
 
 
 class ExchgTestBase(unittest.TestCase):
@@ -13,7 +13,7 @@ class ExchgTestBase(unittest.TestCase):
         self.admin_contacts = [3, 4, 5]
         self.tg = TelegramMock()
         self.db = SqlDb()
-        self.rep_sys = RepSysMock()
+        self.rep_sys = ReputationSystem(self.db.engine)
         self.app = Application(
             self.db,
             self.tg,

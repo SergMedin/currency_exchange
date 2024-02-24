@@ -5,11 +5,7 @@ from unittest.mock import patch
 
 from lib.rep_sys.rep_id import RepSysUserId
 
-from ..application import Application
-from ..botlib.tg import TelegramMock
-from ..currency_rates import CurrencyMockClient
-from ..rep_sys.rep_sys import AUTH_REC_VALIDITY_SEC, RepSysMock
-from ..db_sqla import SqlDb
+from ..rep_sys.rep_sys import AUTH_REC_VALIDITY_SEC
 from .base import ExchgTestBase
 
 
@@ -23,7 +19,6 @@ class TestMain(ExchgTestBase):
         self.tg.emulate_incoming_message(
             222, "Noob", "", keyboard_callback="create_order"
         )
-        print(self.tg.outgoing)
         self.assertIn("Вы не авторизованы", self.tg.outgoing[-2].text)
         self.assertIn("Выберите действие", self.tg.outgoing[-1].text)
 
@@ -104,7 +99,9 @@ class TestEnterCodeStep(ExchgTestBase):
         self.tg.emulate_incoming_message(222, "Noob", "3454")
         self.assertIn("Неверный код", self.tg.outgoing[-2].text)
         self.tg.emulate_incoming_message(222, "Noob", "3454")
-        self.assertIn("Исчерпан лимит количества попыток", self.tg.outgoing[-2].text)
+        self.assertIn(
+            "Исчерпан лимит количества попыток или времени", self.tg.outgoing[-2].text
+        )
         self.assertIn("Введите ваш email", self.tg.outgoing[-1].text)
 
     def test_correct_code(self):

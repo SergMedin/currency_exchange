@@ -7,7 +7,7 @@ from lib.currency_rates import CurrencyFreaksClient
 from lib.application import Application
 from lib.db_sqla import SqlDb
 from lib.logger import setup_logging
-from lib.rep_sys.rep_sys import RepSysMock
+from lib.rep_sys.rep_sys import ReputationSystem
 
 
 if __name__ == "__main__":
@@ -26,12 +26,13 @@ if __name__ == "__main__":
     else:
         admin_contacts = list(map(int, admin_contacts_raw.strip().split(",")))
 
+    db = SqlDb(conn_str)
     app = Application(
-        db=SqlDb(conn_str),
+        db=db,
         tg=telegram,
         currency_client=currency_client,
         admin_contacts=admin_contacts,
-        rep_sys=RepSysMock(),
+        rep_sys=ReputationSystem(db.engine),
     )
 
     print("Wating for TG messages")

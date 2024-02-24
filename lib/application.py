@@ -3,6 +3,10 @@ from decimal import Decimal
 import datetime
 import os
 import logging
+from lib.application_base import ApplicationBase
+from lib.comms.mailer import MailerMock
+from lib.rep_sys.email_auth import EmailAuthenticator
+from lib.rep_sys.rep_id import RepSysUserId
 
 
 from .botlib.stories import (
@@ -20,10 +24,10 @@ from .exchange import Exchange
 from .data import Match, Order, User, OrderType
 from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMockClient
 from .lazy_load import LazyMessageLoader
-from .rep_sys import ReputationSystem, RepSysUserId
+from .rep_sys import ReputationSystem
 
 
-class Application:
+class Application(ApplicationBase):
     def __init__(
         self,
         db: Db,
@@ -54,6 +58,9 @@ class Application:
         currency_converter = CurrencyConverter(currency_client)
         self._ex = Exchange(self._db, currency_converter, self._on_match)
         self._validator = business_rules.Validator()
+
+    def get_email_authenticator(self, user_id: RepSysUserId) -> EmailAuthenticator:
+        return EmailAuthenticator(user_id, MailerMock(), self._db.engine)
 
     def _send_message(
         self,
@@ -90,7 +97,7 @@ class Application:
             _root = self._sessions[m.user_id]
         except KeyError:
             session = dialogs.Session(
-                m.user_id, m.user_name, self._ex, rep_sys=self._rep_sys
+                m.user_id, m.user_name, self, self._ex, rep_sys=self._rep_sys
             )
             _root = dialogs.Main(session)
             self._sessions[m.user_id] = _root

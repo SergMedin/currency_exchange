@@ -10,7 +10,7 @@ from lib.botlib.stories import (
 from lib.dialogs.base import ExchgController
 from lib.dialogs.place_order import CreateOrder
 from lib.rep_sys.rep_sys import RepSysUserId
-from lib.rep_sys.email_auth import EmlAuthState, TooManyAttemptsError
+from lib.rep_sys.email_auth import EmlAuthState, TooManyAttemptsOrExpiredError
 
 
 class AuthMain(ExchgController):
@@ -21,7 +21,7 @@ class AuthMain(ExchgController):
             text="Not supported",
         )
         if self.session.email_auth is None:
-            self.session.email_auth = self.session.rep_sys.get_email_authenticator(
+            self.session.email_auth = self.session.app.get_email_authenticator(
                 RepSysUserId(self.session.user_id)
             )
 
@@ -107,11 +107,15 @@ class AuthEnterCode(ExchgController):
                     self.session.rep_sys.set_authenticity(
                         RepSysUserId(self.session.user_id), True
                     )
+                    self.session.email_auth.delete()
                     return self.close()
                 else:
                     return OutMessage("Неверный код") + self.render()
-            except TooManyAttemptsError as ex:
-                return OutMessage("Исчерпан лимит количества попыток") + self.close()
+            except TooManyAttemptsOrExpiredError as ex:
+                return (
+                    OutMessage("Исчерпан лимит количества попыток или времени")
+                    + self.close()
+                )
             except Exception as ex:
                 return OutMessage(str(ex)) + self.render()
         else:
@@ -136,8 +140,8 @@ class Authenticated(ExchgController):
                 assert self.parent
                 res = self.parent.close()
             elif e.name == "create_order":
-                assert self.parent
-                res = self.show_child(CreateOrder(self.parent))
+                assert self.parent and self.parent.parent
+                res = self.show_child(CreateOrder(self.parent.parent))
             else:
                 logging.error(f"Unknown button action: {e.name}")
                 res = self.render()
@@ -164,5 +168,4 @@ class AuthAlternative(ExchgController):
                 res = self.parent.parent.close()
             return self.edit_last(e, res)
         else:
-            assert self.parent.parent
             return self.parent.parent.close()
