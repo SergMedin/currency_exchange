@@ -1,22 +1,19 @@
-from dataclasses import dataclass
 import time
-from typing import Dict, Tuple
+from typing import Any
 from unittest import TestCase, mock
 
+from .rep_sys_db import RepSysDb
 from .rep_id import RepSysUserId
+from .auth_rec import AuthRecord
 from .email_auth import EmailAuthenticator, EmailAuthenticatorMock
-
-
-@dataclass
-class AuthRecord:
-    authenticated: bool
-    when: float
 
 
 AUTH_REC_VALIDITY_SEC = 60 * 60 * 24 * 30 * 3  # 90 days
 
 
 class ReputationSystem:
+    def __init__(self, db_engine: Any):
+        self._db = RepSysDb(db_engine)
 
     def is_authenticated(self, user_id: RepSysUserId) -> bool:
         try:
@@ -26,52 +23,37 @@ class ReputationSystem:
             return False
 
     def set_authenticity(self, user_id: RepSysUserId, is_auth: bool) -> None:
-        raise NotImplementedError()
-
-    def get_email_authenticator(self, user_id: RepSysUserId) -> "EmailAuthenticator":
-        raise NotImplementedError()
-
-    def _get_auth_record(self, user_id: RepSysUserId) -> AuthRecord:
-        raise NotImplementedError()
-
-
-class RepSysMock(ReputationSystem):
-    tg_auth: Dict[int, Tuple[bool, float]]
-
-    def __init__(self):
-        self.tg_auth = {}
-
-    def set_authenticity(self, user_id: RepSysUserId, is_auth: bool) -> None:
-        self.tg_auth[user_id.telegram_user_id] = (is_auth, time.time())
+        self._db.set_authenticity(user_id.telegram_user_id, is_auth)
 
     def get_email_authenticator(self, user_id: RepSysUserId) -> "EmailAuthenticator":
         return EmailAuthenticatorMock(user_id)
 
     def _get_auth_record(self, user_id: RepSysUserId) -> AuthRecord:
-        status, when = self.tg_auth[user_id.telegram_user_id]
-        return AuthRecord(status, when)
+        return self._db.get_auth_record(user_id.telegram_user_id)
 
 
 class T(TestCase):
+    def setUp(self):
+        import sqlalchemy
+
+        self.db_engine = sqlalchemy.create_engine("sqlite://")
+        self.rs = ReputationSystem(self.db_engine)
 
     def test_empty(self):
-        rs = RepSysMock()
-        self.assertFalse(rs.is_authenticated(RepSysUserId(123)))
+        self.assertFalse(self.rs.is_authenticated(RepSysUserId(123)))
 
     def test_auth(self):
-        rs = RepSysMock()
-        rs.set_authenticity(RepSysUserId(123), True)
-        self.assertTrue(rs.is_authenticated(RepSysUserId(123)))
+        self.rs.set_authenticity(RepSysUserId(123), True)
+        self.assertTrue(self.rs.is_authenticated(RepSysUserId(123)))
 
-        rs.set_authenticity(RepSysUserId(123), False)
-        self.assertFalse(rs.is_authenticated(RepSysUserId(123)))
+        self.rs.set_authenticity(RepSysUserId(123), False)
+        self.assertFalse(self.rs.is_authenticated(RepSysUserId(123)))
 
     def test_expiration(self):
-        rs = RepSysMock()
-        rs.set_authenticity(RepSysUserId(123), True)
-        self.assertTrue(rs.is_authenticated(RepSysUserId(123)))
+        self.rs.set_authenticity(RepSysUserId(123), True)
+        self.assertTrue(self.rs.is_authenticated(RepSysUserId(123)))
 
         with mock.patch(
             "time.time", return_value=time.time() + AUTH_REC_VALIDITY_SEC + 1
         ):
-            self.assertFalse(rs.is_authenticated(RepSysUserId(123)))
+            self.assertFalse(self.rs.is_authenticated(RepSysUserId(123)))

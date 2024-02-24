@@ -2,7 +2,7 @@ import dataclasses
 from decimal import Decimal
 from typing import Callable, Any
 import unittest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, Engine
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, Session
 from .db import Db
 from .data import Order, OrderType, User
@@ -27,6 +27,10 @@ class SqlDb(Db):
 
     def iterate_orders(self, callback: Callable[[Order], None]):
         self._iterate(_ORDERS_TABLE, callback)
+
+    @property
+    def engine(self) -> Engine:
+        return self._eng
 
     def _get(self, table, id):
         with Session(self._eng) as session:

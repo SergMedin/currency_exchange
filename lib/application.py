@@ -21,7 +21,7 @@ from .gsheets_loger import GSheetsLoger
 from .data import Match, Order, User, OrderType
 from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMockClient
 from .lazy_load import LazyMessageLoader
-from .rep_sys import ReputationSystem, RepSysUserId
+from .rep_sys import ReputationSystem
 
 
 class Application:

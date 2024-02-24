@@ -5,11 +5,7 @@ from unittest.mock import patch
 
 from lib.rep_sys.rep_id import RepSysUserId
 
-from ..application import Application
-from ..botlib.tg import TelegramMock
-from ..currency_rates import CurrencyMockClient
-from ..rep_sys.rep_sys import AUTH_REC_VALIDITY_SEC, RepSysMock
-from ..db_sqla import SqlDb
+from ..rep_sys.rep_sys import AUTH_REC_VALIDITY_SEC
 from .base import ExchgTestBase
 
 
