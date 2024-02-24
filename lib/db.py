@@ -1,4 +1,5 @@
 from typing import Callable
+from sqlalchemy import Engine
 from decimal import Decimal
 from .data import Order
 
@@ -23,4 +24,8 @@ class Db:
         raise NotImplementedError()
 
     def store_last_match_price(self, price: Decimal):
+        raise NotImplementedError()
+
+    @property
+    def engine(self) -> Engine:
         raise NotImplementedError()
