@@ -21,7 +21,7 @@ class AuthMain(ExchgController):
             text="Not supported",
         )
         if self.session.email_auth is None:
-            self.session.email_auth = self.session.rep_sys.get_email_authenticator(
+            self.session.email_auth = self.session.app.get_email_authenticator(
                 RepSysUserId(self.session.user_id)
             )
 

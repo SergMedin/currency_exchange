@@ -2,10 +2,10 @@ import time
 from typing import Any
 from unittest import TestCase, mock
 
+
 from .rep_sys_db import RepSysDb
 from .rep_id import RepSysUserId
 from .auth_rec import AuthRecord
-from .email_auth import EmailAuthenticator, EmailAuthenticatorMock
 
 
 AUTH_REC_VALIDITY_SEC = 60 * 60 * 24 * 30 * 3  # 90 days
@@ -13,6 +13,7 @@ AUTH_REC_VALIDITY_SEC = 60 * 60 * 24 * 30 * 3  # 90 days
 
 class ReputationSystem:
     def __init__(self, db_engine: Any):
+        self._db_engine = db_engine
         self._db = RepSysDb(db_engine)
 
     def is_authenticated(self, user_id: RepSysUserId) -> bool:
@@ -24,9 +25,6 @@ class ReputationSystem:
 
     def set_authenticity(self, user_id: RepSysUserId, is_auth: bool) -> None:
         self._db.set_authenticity(user_id.telegram_user_id, is_auth)
-
-    def get_email_authenticator(self, user_id: RepSysUserId) -> "EmailAuthenticator":
-        return EmailAuthenticatorMock(user_id)
 
     def _get_auth_record(self, user_id: RepSysUserId) -> AuthRecord:
         return self._db.get_auth_record(user_id.telegram_user_id)
