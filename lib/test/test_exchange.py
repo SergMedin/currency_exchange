@@ -7,22 +7,16 @@ import os
 from ..exchange import Exchange
 from ..db_sqla import SqlDb
 from ..data import Order, User, OrderType
-from ..gsheets_loger import GSheetsLoger
 from ..config import ORDER_LIFETIME_LIMIT
 from ..currency_rates import CurrencyConverter, CurrencyMockClient
 
 
 class T(unittest.TestCase):
-    lock = threading.RLock()
     no = 0
 
     def setUp(self):
         self.db = SqlDb()
         self.matches = []
-        with T.lock:
-            seq_no = T.no
-            T.no += 1
-        endp = f"inproc://orders.log.{seq_no}"
 
         currency_client = CurrencyMockClient()
         currency_converter = CurrencyConverter(currency_client)
@@ -30,17 +24,7 @@ class T(unittest.TestCase):
             self.db,
             currency_converter,
             lambda m: self.matches.append(m),
-            zmq_orders_log_endpoint=endp,
         )
-        gsk = os.getenv("GOOGLE_SPREADSHEET_KEY", None)
-        gsst = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
-        self.loger = GSheetsLoger(endp, gsk, gsst)
-        self.loger.start()
-
-    def tearDown(self) -> None:
-        self.exchange.dtor()
-        self.loger.stop()
-        return super().tearDown()
 
     def testConstruction(self):
         logging.debug("[ testConstruction ]".center(80, "|"))
@@ -344,56 +328,20 @@ class T(unittest.TestCase):
         del result["currency_rate"]
         self.assertEqual(result, expected_result)
 
-    def test_loger_simple(self):
-        self.exchange.place_order(
-            Order(
-                User(1), OrderType.SELL, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.exchange.place_order(
-            Order(
-                User(2), OrderType.BUY, 98.0, 1299.0, 500.0, lifetime_sec=48 * 60 * 60
-            )
-        )
-        self.assertEqual(len(self.matches), 1)
-        time.sleep(0.1)
-        t = self.loger._gst
-        self.assertEqual(t.cell(self.loger._curr_row - 1, 2), "new_order")
-
 
 class ExchangeTestsWithDatabaseFile(unittest.TestCase):
-    lock = threading.RLock()
     no = 0
 
     def setUp(self):
-        if os.path.exists("unittest_database.sqlite"):
-            os.remove("unittest_database.sqlite")
-        self.db = SqlDb(conn_str="sqlite:///unittest_database.sqlite")
+        self.db = SqlDb()
         self.matches = []
-        with T.lock:
-            seq_no = T.no
-            T.no += 1
-        endp = f"inproc://orders.log.{seq_no}"
         currency_client = CurrencyMockClient()
         currency_converter = CurrencyConverter(currency_client)
         self.exchange = Exchange(
             self.db,
             currency_converter,
             lambda m: self.matches.append(m),
-            zmq_orders_log_endpoint=endp,
         )
-        gsk = os.getenv("GOOGLE_SPREADSHEET_KEY", None)
-        gsst = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
-        self.loger = GSheetsLoger(endp, gsk, gsst)
-        self.loger.start()
-
-    def tearDown(self):
-        self.exchange.dtor()
-        self.loger.stop()
-        self.db._eng.dispose()
-        if os.path.exists("unittest_database.sqlite"):
-            os.remove("unittest_database.sqlite")
-        return super().tearDown()
 
     def testPersistance(self):
         self.exchange.place_order(
