@@ -19,9 +19,9 @@ _STATE_VALIDITY_SEC = 60 * 60 * 1  # 1 hour
 class EmailAuthenticator:
     @dataclass
     class State:
-        ctime: int = field(default_factory=lambda: int(time.time()))
         state: "EmlAuthState" = field(default_factory=lambda: EmlAuthState.WAIT_EMAIL)
         code: Optional[str] = None
+        code_ctime: Optional[int] = None
         email: Optional[str] = None
         attempts: int = 0
 
@@ -61,6 +61,7 @@ class EmailAuthenticator:
 
         self._pers.email = email
         self._pers.code = code
+        self._pers.code_ctime = int(time.time())
         self._pers.state = EmlAuthState.WAIT_CODE
         self._save_state()
 
@@ -72,7 +73,8 @@ class EmailAuthenticator:
         if self._pers.state != EmlAuthState.WAIT_CODE:
             raise RuntimeError("Invalid state for code validation")
 
-        if time.time() - self._pers.ctime > _STATE_VALIDITY_SEC:
+        code_ctime = self._pers.code_ctime if self._pers.code_ctime else 0
+        if time.time() - code_ctime > _STATE_VALIDITY_SEC:
             self.reset()
             raise TooManyAttemptsOrExpiredError()
 
@@ -100,15 +102,14 @@ class EmailAuthenticator:
             if dbo is None:
                 dbo = _EmailAuthState(
                     telegram_user_id=self._user_id.telegram_user_id,
-                    ctime=self._pers.ctime,
                     state=self._pers.state.value,
                     attempts=self._pers.attempts,
                 )
                 session.add(dbo)
-            self._pers.ctime = dbo.ctime
             self._pers.state = EmlAuthState(dbo.state)
-            self._pers.code = dbo.code
             self._pers.email = dbo.email
+            self._pers.code = dbo.code
+            self._pers.code_ctime = dbo.code_ctime
             self._pers.attempts = dbo.attempts
             session.commit()
 
@@ -120,6 +121,7 @@ class EmailAuthenticator:
                 dbo.state = self._pers.state.value
                 dbo.email = self._pers.email
                 dbo.code = self._pers.code
+                dbo.code_ctime = self._pers.code_ctime
                 dbo.attempts = self._pers.attempts
                 session.commit()
         except Exception as e:
@@ -148,11 +150,11 @@ class _EmailAuthState(_Base):
     __tablename__ = "email_auth_states"
 
     telegram_user_id: Mapped[int] = mapped_column(primary_key=True)
-    ctime: Mapped[int] = mapped_column(nullable=False)
     state: Mapped[int] = mapped_column(nullable=False)
     attempts: Mapped[int] = mapped_column(nullable=False)
-    code: Mapped[Optional[str]] = mapped_column()
     email: Mapped[Optional[str]] = mapped_column()
+    code: Mapped[Optional[str]] = mapped_column()
+    code_ctime: Mapped[Optional[int]] = mapped_column()
 
 
 class T(TestCase):
