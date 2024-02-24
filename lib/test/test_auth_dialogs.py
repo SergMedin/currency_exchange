@@ -19,7 +19,6 @@ class TestMain(ExchgTestBase):
         self.tg.emulate_incoming_message(
             222, "Noob", "", keyboard_callback="create_order"
         )
-        print(self.tg.outgoing)
         self.assertIn("Вы не авторизованы", self.tg.outgoing[-2].text)
         self.assertIn("Выберите действие", self.tg.outgoing[-1].text)
 

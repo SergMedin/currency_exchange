@@ -136,8 +136,8 @@ class Authenticated(ExchgController):
                 assert self.parent
                 res = self.parent.close()
             elif e.name == "create_order":
-                assert self.parent
-                res = self.show_child(CreateOrder(self.parent))
+                assert self.parent and self.parent.parent
+                res = self.show_child(CreateOrder(self.parent.parent))
             else:
                 logging.error(f"Unknown button action: {e.name}")
                 res = self.render()
@@ -164,5 +164,4 @@ class AuthAlternative(ExchgController):
                 res = self.parent.parent.close()
             return self.edit_last(e, res)
         else:
-            assert self.parent.parent
             return self.parent.parent.close()
