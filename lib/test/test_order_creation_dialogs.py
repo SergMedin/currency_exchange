@@ -140,3 +140,58 @@ class TestInputNumbersFormatHandling(TestOrderCreationDialogs):
         self.assertIn("555.1", self.tg.outgoing[-1].text)
         self.assertIn("4.5", self.tg.outgoing[-1].text)
         self.assertIn("400.1", self.tg.outgoing[-1].text)
+
+
+class TestEnterRateStep(TestOrderCreationDialogs):
+    def test_simple(self):
+        self._create_order(stop_on_rate=True)
+        self.assertIn("Введите курс", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "4.5")
+        self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
+
+    def test_invalid_number(self):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "abc")
+        self.assertIn("Курс обмена должен быть числом", self.tg.outgoing[-2].text)
+
+    def test_negative(self):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "-1")
+        self.assertIn("Курс обмена должен быть больше 0", self.tg.outgoing[-2].text)
+
+    def test_zero(self):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "0")
+        self.assertIn("Курс обмена должен быть больше 0", self.tg.outgoing[-2].text)
+
+    def _rel(self, rel: str, expected: str):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback=f"rel:{rel}")
+        self.assertIn(expected, self.tg.outgoing[-1].text)
+
+    def test_rel_minus_one(self):
+        self._rel("-1", "Относительный курс: -1.00%")
+
+    def test_rel_plus_one(self):
+        self._rel("+1", "Относительный курс: 1.00%")
+
+    def test_rel_exact(self):
+        self._rel("+0", "Относительный курс: 0.00%")
+
+    def test_cancel(self):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="cancel")
+        self.assertIn("Выберите действие:", self.tg.outgoing[-1].text)
+
+    def test_relative(self):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="relative")
+        self.assertIn("Укажите относительный курс", self.tg.outgoing[-1].text)
+
+    @patch("logging.error")
+    def test_bad_button(self, x):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="bad_button")
+        self.assertIn("Введите курс", self.tg.outgoing[-1].text)
+        x.assert_called_once()
+        x.assert_called_with("EnterPriceStep: Unknown action: bad_button")
