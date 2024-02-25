@@ -28,7 +28,7 @@ class Exchange:
         self._orders: dict[int, data.Order] = dict(orders)
         self.last_match_price = self._db.get_last_match_price()
 
-        self.currency_converter = currency_converter
+        self.currency_converter = currency_client
         self.currency_rate = self.currency_converter.get_rate("RUB", "AMD")
 
     def place_order(self, o: data.Order) -> None:
