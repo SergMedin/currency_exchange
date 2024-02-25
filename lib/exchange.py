@@ -3,7 +3,6 @@ import logging
 import time
 import dataclasses
 import unittest
-import zmq
 import pickle
 from decimal import Decimal
 from .db import Db
@@ -15,21 +14,10 @@ from .currency_rates import CurrencyConverter
 class Exchange:
     # FIXME: isn't it better not to store any orders in memory and go through the db on every event instead?
 
-    def __init__(
-        self,
-        db: Db,
-        currency_converter: CurrencyConverter,
-        on_match=None,
-        zmq_orders_log_endpoint=None,
-    ):
+    def __init__(self, db: Db, currency_client, on_match=None):
         self._db = db
         self._on_match = on_match
         orders: List[Tuple[int, data.Order]] = []
-        self._log_q = (
-            zmq.Context.instance().socket(zmq.PUB) if zmq_orders_log_endpoint else None
-        )
-        if self._log_q:
-            self._log_q.bind(zmq_orders_log_endpoint)
 
         def add(o: data.Order):
             if o._id is None:
@@ -43,14 +31,6 @@ class Exchange:
         self.currency_converter = currency_converter
         self.currency_rate = self.currency_converter.get_rate("RUB", "AMD")
 
-    def dtor(self):
-        if self._log_q:
-            self._log_q.close()
-            self._log_q = None
-
-    def __del__(self):
-        self.dtor()
-
     def place_order(self, o: data.Order) -> None:
         logging.info(f"place_order: {o}")
         if o.lifetime_sec > ORDER_LIFETIME_LIMIT:
@@ -62,7 +42,6 @@ class Exchange:
         self._update_prices()  # FIXME: workaround to not to force clients to calculate prices
         if o._id is None:
             raise ValueError("Order ID is None")
-        self._log("new", o)
         self._orders[o._id] = o
         self._check_order_lifetime()  # Removing expired orders
         self._process_matches()
@@ -178,10 +157,6 @@ class Exchange:
                     if seller.amount_left <= 0:  # or buyer.amount_left <= 0:
                         break
 
-            # If the seller's order is fully matched, move on to the next seller
-            # if seller.amount_left <= 0:
-            #     continue
-
     def remove_order(self, _id: int) -> None:
         del self._orders[_id]
         self._db.remove_order(_id)
@@ -266,11 +241,6 @@ class Exchange:
                 f"  * best seller price: {min_seller_price if sellers else 'No sellers yet'}"
             ),
         }
-
-    def _log(self, operation: str, order: data.Order) -> None:
-        if self._log_q:
-            rec = data.Operation(data.OperationType.NEW_ORDER, order)
-            self._log_q.send(pickle.dumps(rec))
 
 
 class T(unittest.TestCase):

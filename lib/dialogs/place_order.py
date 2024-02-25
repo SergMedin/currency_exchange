@@ -406,6 +406,11 @@ class CreateOrder(ExchgController):
         self.order = _OrderDraft()
         self.child = ChooseOrderTypeStep(self)
 
+    def render(self) -> OutMessage:
+        if not self.is_authenticated:
+            return OutMessage("Вы не авторизованы") + self.close()
+        return super().render()
+
     def on_child_closed(self, child: Controller) -> OutMessage:
         if isinstance(child, ChooseOrderTypeStep):
             if child.order_type is not None:

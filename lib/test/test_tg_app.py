@@ -5,20 +5,10 @@ from ..application import Application
 from ..botlib.tg import TelegramMock
 from ..currency_rates import CurrencyMockClient
 from ..db_sqla import SqlDb
+from .base import ExchgTestBase
 
 
-class TestTgApp(unittest.TestCase):
-
-    def setUp(self):
-        self.admin_contacts = [3, 4, 5]
-        self.tg = TelegramMock()
-        self.db = SqlDb()
-        self.app = Application(
-            self.db,
-            self.tg,
-            currency_client=CurrencyMockClient(),
-            admin_contacts=self.admin_contacts,
-        )
+class TestTgApp(ExchgTestBase):
 
     def test_start_command(self):
         self.tg.emulate_incoming_message(1, "Joe", "/start")
