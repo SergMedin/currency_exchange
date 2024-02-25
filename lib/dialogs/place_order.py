@@ -1,9 +1,11 @@
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 from dataclasses import dataclass
 from decimal import Decimal
 import decimal
 import logging
 import unittest
+
+from lib.dialogs.session import Session
 from ..botlib.stories import (
     Controller,
     Event,
@@ -98,22 +100,50 @@ class EnterAmountStep(ExchgController):
         return self.render()
 
 
+REL_RATE_REFRESH_FREQUENCY_DISCLAIMER = (
+    "Бот периодически синхронизирует курс вашей заявки с биржей. "
+    "При скачках на рынках возможны отставания курса."
+)
+
+
+def _btn_name_to_rate(btn_name: str) -> Decimal:
+    return Decimal(btn_name.split(":")[1]) / Decimal(100) + Decimal(1)
+
+
+def _get_outer_exchg_rate(
+    ses: Session, pair: Tuple[str, str] = ("RUB", "AMD")
+) -> Tuple[Decimal, str]:
+    rate = ses.exchange.get_rate(*pair)
+    rate_s = f"{rate['rate']:.4f}" if rate else "X.XX"
+    return rate, f"{rate['rate']:.4f}" if rate else "X.XX"
+
+
 @dataclass
 class EnterPriceStep(ExchgController):
     price: Decimal | None = None
     relative_rate: Decimal | None = None
 
-    def __init__(self, parent: Controller):
+    def __init__(self, parent: ExchgController):
+        _, rate_s = _get_outer_exchg_rate(parent.session)
         super().__init__(
             parent=parent,
-            text="Введите курс или выберите опцию 'Относительный курс' чтобы ввести относительный курс",
+            text=(
+                f"{REL_RATE_REFRESH_FREQUENCY_DISCLAIMER}\nКурс биржи: ≈{rate_s} (обновляется несколько раз в день)\n\n"
+                "Введите курс обмена или выберите опцию 'Относительный курс' чтобы ввести относительный курс"
+            ),
             buttons=[
-                [Button("Относительный курс", "relative")],
+                [
+                    Button("-1%", "rel:-1"),
+                    Button("±0%", "rel:0"),
+                    Button("+1%", "rel:+1"),
+                ],
+                [Button("Указать другой % >>", "relative")],
                 [Button("Отмена", "cancel")],
             ],
         )
 
     def process_event(self, e: Event) -> OutMessage:
+        assert isinstance(self.parent, CreateOrder)
         if isinstance(e, Message):
             try:
                 price = _str2dec(e.text)
@@ -121,8 +151,6 @@ class EnterPriceStep(ExchgController):
                     return (
                         OutMessage("Курс обмена должен быть больше 0") + self.render()
                     )
-                assert self.parent is not None
-                assert isinstance(self.parent, CreateOrder)
                 self.price = price
                 return self.close()
             except decimal.InvalidOperation as e:
@@ -130,10 +158,12 @@ class EnterPriceStep(ExchgController):
         elif isinstance(e, ButtonAction):
             res: OutMessage
             if e.name == "cancel":
-                assert self.parent is not None and isinstance(self.parent, CreateOrder)
                 res = self.parent.cancel()
             elif e.name == "relative":
                 res = self.show_child(EnterRelativeRateStep(self))
+            elif e.name.startswith("rel:"):
+                self.relative_rate = _btn_name_to_rate(e.name)
+                res = self.close()
             else:
                 logging.error(f"EnterPriceStep: Unknown action: {e.name}")
                 res = self.render()
@@ -153,9 +183,12 @@ class EnterRelativeRateStep(ExchgController):
     def __init__(self, parent: Controller):
         super().__init__(
             parent=parent,
-            text="Укажите относительный курс биржи в процентах",
+            text=(
+                f"{REL_RATE_REFRESH_FREQUENCY_DISCLAIMER}\n"
+                "Укажите относительный курс биржи в процентах:"
+            ),
             buttons=[
-                [Button("Использовать курс биржи", "rel:0")],
+                [Button("Использовать курс биржи (±0%)", "rel:0")],
                 [
                     Button("-2.0%", "rel:-2"),
                     Button("-1.5%", "rel:-1.5"),
@@ -173,11 +206,10 @@ class EnterRelativeRateStep(ExchgController):
         )
 
     def process_event(self, e: Event) -> OutMessage:
+        assert isinstance(self.parent, EnterPriceStep)
         if isinstance(e, Message):
             try:
                 rate = _str2dec(e.text)
-                assert self.parent is not None
-                assert isinstance(self.parent, EnterPriceStep)
                 self.parent.relative_rate = rate / Decimal(100) + Decimal(1)
                 return self.close()
             except decimal.InvalidOperation as e:
@@ -190,10 +222,7 @@ class EnterRelativeRateStep(ExchgController):
             if e.name == "back":
                 res = self.close()
             elif e.name.startswith("rel:"):
-                rate = Decimal(e.name.split(":")[1]) / Decimal(100) + Decimal(1)
-                assert self.parent is not None
-                assert isinstance(self.parent, EnterPriceStep)
-                self.parent.relative_rate = rate
+                self.parent.relative_rate = _btn_name_to_rate(e.name)
                 res = self.close()
             else:
                 logging.error(f"EnterRelativeRateStep: Unknown action: {e.name}")

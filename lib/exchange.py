@@ -8,6 +8,7 @@ from decimal import Decimal
 from .db import Db
 from .config import ORDER_LIFETIME_LIMIT
 from . import data
+from .currency_rates import CurrencyConverter
 
 
 class Exchange:
@@ -47,6 +48,9 @@ class Exchange:
 
     def list_orders_for_user(self, user: data.User) -> list[data.Order]:
         return [o for o in self._orders.values() if o.user.id == user.id]
+
+    def get_rate(self, from_currency: str, to_currency: str):
+        return self.currency_converter.get_rate(from_currency, to_currency)
 
     def _check_order_lifetime(self) -> None:
         """
