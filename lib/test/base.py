@@ -2,6 +2,7 @@ import unittest
 from lib.application import Application
 
 from lib.botlib.tg import TelegramMock
+from lib.comms.mailer import MailerMock
 from lib.currency_rates import CurrencyMockClient
 from lib.db_sqla import SqlDb
 from lib.rep_sys.rep_id import RepSysUserId
@@ -14,11 +15,13 @@ class ExchgTestBase(unittest.TestCase):
         self.tg = TelegramMock()
         self.db = SqlDb()
         self.rep_sys = ReputationSystem(self.db.engine)
+        self.mailer = MailerMock()
         self.app = Application(
             self.db,
             self.tg,
             currency_client=CurrencyMockClient(),
             rep_sys=self.rep_sys,
+            mailer=self.mailer,
             admin_contacts=self.admin_contacts,
         )
         self.rep_sys.set_authenticity(RepSysUserId(1), True)
