@@ -20,6 +20,14 @@ class EmailAddress:
     def is_valid(self) -> bool:
         return is_email_valid(self.addr)
 
+    @property
+    def obfuscated(self) -> str:
+        p = self.addr.split("@", 1)
+        username, domain = p[0], p[1] if len(p) > 1 else ""
+        obfuscated_username = username[:3] + ".." if len(username) >= 5 else "..."
+        obfuscated_domain = ".." + domain[-2:]
+        return obfuscated_username + "@" + obfuscated_domain
+
     def __hash__(self) -> int:
         return hash(self.addr)
 
@@ -53,3 +61,12 @@ class T(TestCase):
         self.assertEqual(1, len(mm.sent))
         self.assertEqual(1, len(mm.sent[e]))
         self.assertEqual("hello", mm.sent[e][0])
+
+    def test_obfuscation(self):
+        self.assertEqual("joh..@..et", EmailAddress("johnson@example.net").obfuscated)
+        self.assertEqual("...@..om", EmailAddress("j@x.com").obfuscated)
+        self.assertEqual("...@..", EmailAddress("j").obfuscated)
+        self.assertEqual("...@..ww", EmailAddress("j@www").obfuscated)
+        self.assertEqual("...@..ww", EmailAddress("@www").obfuscated)
+        self.assertEqual("...@..om", EmailAddress("@gmail.com").obfuscated)
+        self.assertEqual("...@..", EmailAddress("").obfuscated)
