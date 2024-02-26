@@ -5,6 +5,7 @@ import os
 from lib.botlib.tg import TelegramReal
 from lib.currency_rates import CurrencyFreaksClient
 from lib.application import Application
+from lib.comms.mailer import MailerReal, MailerMock
 from lib.db_sqla import SqlDb
 from lib.logger import setup_logging
 from lib.rep_sys.rep_sys import ReputationSystem
@@ -18,6 +19,22 @@ if __name__ == "__main__":
     print(f"tg_token: ...{tg_token[-5:]}" if tg_token else "tg_token: None")
     telegram = TelegramReal(token=tg_token)
     currency_client = CurrencyFreaksClient(os.environ["EXCH_CURRENCYFREAKS_TOKEN"])
+    mailer: MailerReal | MailerMock = MailerMock()
+    try:
+        email_user = os.environ["EMAIL_USER"]
+        email_app_password = os.environ["EMAIL_APP_PASSWORD"]
+        email_server = os.environ["EMAIL_SERVER"]
+        email_port = os.environ["EMAIL_PORT"]
+
+        mailer = MailerReal(
+            server=email_server,
+            port=int(email_port),
+            user=email_user,
+            app_password=email_app_password,
+        )
+    except:
+        pass
+
 
     try:
         admin_contacts_raw = os.environ["ADMINS_TG"]
@@ -33,6 +50,7 @@ if __name__ == "__main__":
         currency_client=currency_client,
         admin_contacts=admin_contacts,
         rep_sys=ReputationSystem(db.engine),
+        mailer=mailer,
     )
 
     print("Wating for TG messages")

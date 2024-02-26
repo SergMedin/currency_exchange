@@ -1,4 +1,6 @@
 from dataclasses import dataclass, field
+from email.mime.text import MIMEText
+import smtplib
 from typing import Dict, List
 from unittest import TestCase
 
@@ -32,6 +34,26 @@ class MailerMock(Mailer):
         if to not in self.sent:
             self.sent[to] = []
         self.sent[to].append(text)
+
+
+class MailerReal(Mailer):
+    def __init__(self, server: str, port: int, user: str, app_password: str):
+        self.server: str = server
+        self.port: int = port
+        self.user: str = user
+        self.password: str = app_password
+
+        
+    def send_email(self, to: EmailAddress, text: str):
+        msg = MIMEText(f'Your code for Exchange Bot is {text}')
+        msg["From"] = self.user
+        msg["To"] = to.addr
+        msg["Subject"] = "Your code for Exhcange Bot"
+        server = smtplib.SMTP(self.server, self.port)
+        server.starttls()
+        server.login(self.user, self.password)
+        server.sendmail(self.user, to.addr, msg.as_string())
+        server.quit()
 
 
 class T(TestCase):

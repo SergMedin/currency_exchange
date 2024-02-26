@@ -4,7 +4,7 @@ import datetime
 import os
 import logging
 from lib.application_base import ApplicationBase
-from lib.comms.mailer import MailerMock
+from lib.comms.mailer import MailerMock, MailerReal
 from lib.rep_sys.email_auth import EmailAuthenticator
 from lib.rep_sys.rep_id import RepSysUserId
 
@@ -34,6 +34,7 @@ class Application(ApplicationBase):
         tg: Tg,
         currency_client: CurrencyFreaksClient | CurrencyMockClient,
         rep_sys: ReputationSystem,
+        mailer: MailerMock | MailerReal = MailerMock(),
         admin_contacts: Optional[list[int]] = None,
     ):
         self._admin_contacts = admin_contacts
@@ -41,6 +42,7 @@ class Application(ApplicationBase):
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
         self._rep_sys = rep_sys
+        self._mailer = mailer
 
         # FIXME: should be (1) persistent, (2) LRU with limit, (3) created only when really needed
         self._sessions: dict[int, dialogs.Main] = {}
@@ -60,7 +62,7 @@ class Application(ApplicationBase):
         self._validator = business_rules.Validator()
 
     def get_email_authenticator(self, user_id: RepSysUserId) -> EmailAuthenticator:
-        return EmailAuthenticator(user_id, MailerMock(), self._db.engine)
+        return EmailAuthenticator(user_id, self._mailer, self._db.engine)
 
     def _send_message(
         self,
