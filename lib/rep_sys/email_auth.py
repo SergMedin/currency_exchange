@@ -53,7 +53,7 @@ class EmailAuthenticator:
 
         logging.info(f"Sending code {code} to {eaddr.obfuscated} ...")
         try:
-            self._mailer.send_email(eaddr, f"Your code is {code}")
+            self._mailer.send_email(EmailAddress(email), f"Your code for Exchange Bot is {code}")
         except Exception as e:
             logging.exception(f"Failed to send code to {eaddr.obfuscated}: {e}")
             raise

@@ -88,6 +88,10 @@ jobs:
           echo SILENCE_WARNINGS_ENV_KEY=${{ secrets.SILENCE_WARNINGS_ENV_KEY }} >> .env
           echo EXCH_CURRENCYFREAKS_TOKEN=${{ secrets.EXCH_CURRENCYFREAKS_TOKEN }} >> .env
           echo ADMINS_TG=${{ secrets.ADMINS_TG }} >> .env
+          echo EMAIL_SERVER=${{ secrets.EMAIL_SERVER }} >> .env
+          echo EMAIL_PORT=${{ secrets.EMAIL_PORT }} >> .env
+          echo EMAIL_USER=${{ secrets.EMAIL_USER }} >> .env
+          echo EMAIL_APP_PASSWORD=${{ secrets.EMAIL_APP_PASSWORD }} >> .env
           docker compose -f docker-compose.dev.yml pull
           docker compose -f docker-compose.dev.yml down
           docker compose -f docker-compose.dev.yml up -d
