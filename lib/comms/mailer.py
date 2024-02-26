@@ -45,7 +45,7 @@ class MailerReal(Mailer):
 
         
     def send_email(self, to: EmailAddress, text: str):
-        msg = MIMEText(f'Your code for Exchange Bot is {text}')
+        msg = MIMEText(text)
         msg["From"] = self.user
         msg["To"] = to.addr
         msg["Subject"] = "Your code for Exhcange Bot"
