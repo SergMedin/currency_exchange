@@ -22,7 +22,6 @@ class EmailAuthenticator:
         state: "EmlAuthState" = field(default_factory=lambda: EmlAuthState.WAIT_EMAIL)
         code: Optional[str] = None
         code_ctime: Optional[int] = None
-        email: Optional[str] = None
         attempts: int = 0
 
     def __init__(
@@ -46,20 +45,20 @@ class EmailAuthenticator:
         return self._pers.state
 
     def send_email(self, email: str):
-        if not EmailAddress(email).is_valid:
+        eaddr = EmailAddress(email)
+        if not eaddr.is_valid:
             raise ValueError(f"Invalid email {email}")
 
         code = self._renerate_rnd_code()
 
-        logging.info(f"Sending code {code} to {email} ...")
+        logging.info(f"Sending code {code} to {eaddr.obfuscated} ...")
         try:
             self._mailer.send_email(EmailAddress(email), f"Your code for Exchange Bot is {code}")
         except Exception as e:
-            logging.exception(f"Failed to send code to {email}: {e}")
+            logging.exception(f"Failed to send code to {eaddr.obfuscated}: {e}")
             raise
-        logging.info(f"Sent code {code} to {email}")
+        logging.info(f"Sent code {code} to {eaddr.obfuscated}")
 
-        self._pers.email = email
         self._pers.code = code
         self._pers.code_ctime = int(time.time())
         self._pers.state = EmlAuthState.WAIT_CODE
@@ -107,7 +106,6 @@ class EmailAuthenticator:
                 )
                 session.add(dbo)
             self._pers.state = EmlAuthState(dbo.state)
-            self._pers.email = dbo.email
             self._pers.code = dbo.code
             self._pers.code_ctime = dbo.code_ctime
             self._pers.attempts = dbo.attempts
@@ -119,7 +117,6 @@ class EmailAuthenticator:
                 dbo = session.get(_EmailAuthState, self._user_id.telegram_user_id)
                 assert dbo
                 dbo.state = self._pers.state.value
-                dbo.email = self._pers.email
                 dbo.code = self._pers.code
                 dbo.code_ctime = self._pers.code_ctime
                 dbo.attempts = self._pers.attempts
@@ -152,7 +149,6 @@ class _EmailAuthState(_Base):
     telegram_user_id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[int] = mapped_column(nullable=False)
     attempts: Mapped[int] = mapped_column(nullable=False)
-    email: Mapped[Optional[str]] = mapped_column()
     code: Mapped[Optional[str]] = mapped_column()
     code_ctime: Mapped[Optional[int]] = mapped_column()
 
