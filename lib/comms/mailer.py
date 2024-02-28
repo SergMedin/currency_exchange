@@ -45,14 +45,37 @@ class MailerMock(Mailer):
 
 
 class MailerReal(Mailer):
-    def __init__(self, server: str, port: int, user: str, app_password: str):
+    def __init__(self, server: str, port: int, user: str, app_password: str, allowed_mails_domains: str | None = None):
         self.server: str = server
         self.port: int = port
         self.user: str = user
         self.password: str = app_password
+        self.allowed_mails: dict = self.init_allowed_domains(allowed_mails_domains)
 
-        
+    def init_allowed_domains(self, allowed_mails_domains: str | None):
+        restricted: dict = {
+            "domains": set(),
+            "emails": set(),
+        }
+        if allowed_mails_domains is not None:
+            row_data = allowed_mails_domains.split(",")
+            for row in row_data:
+                if "@" in row:
+                    restricted["emails"].add(row)
+                else:
+                    restricted["domains"].add(row)
+        return restricted
+    
+    def is_allowed(self, email: EmailAddress) -> bool:
+        if email.addr in self.allowed_mails["emails"]:
+            return True
+        if email.addr.split("@")[1] in self.allowed_mails["domains"]:
+            return True
+        return False
+
     def send_email(self, to: EmailAddress, text: str):
+        if not self.is_allowed(to):
+            raise ValueError(f"Email {to.addr} is not allowed to send")
         msg = MIMEText(text)
         msg["From"] = self.user
         msg["To"] = to.addr
