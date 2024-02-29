@@ -5,15 +5,6 @@ from typing import Dict, List
 from unittest import TestCase
 
 
-class Mailer:
-    def send_email(self, to: "EmailAddress", text: str):
-        raise NotImplementedError()
-
-
-def is_email_valid(addr_raw: str) -> bool:
-    return "@" in addr_raw  # TODO
-
-
 @dataclass
 class EmailAddress:
     addr: str
@@ -33,49 +24,68 @@ class EmailAddress:
     def __hash__(self) -> int:
         return hash(self.addr)
 
+class Mailer:
+    def __init__(self, allowed_mail_destinations: str | None = None):
+        self.allowed_destinations: dict = self.init_allowed_destinations(allowed_mail_destinations)
 
-@dataclass
+    def send_email(self, to: "EmailAddress", text: str):
+        raise NotImplementedError()
+    
+    def init_allowed_destinations(self, allowed_mail_destinations: str | None) -> dict:
+        allowed: dict = {
+            "domains": set(),
+            "emails": set(),
+            "restrictions_active": False,
+        }
+        if allowed_mail_destinations is not None:
+            allowed["restrictions_active"] = True
+            destinations = allowed_mail_destinations.lower().split(",")
+            for destination in destinations:
+                if "@" in destination:
+                    allowed["emails"].add(destination)
+                else:
+                    allowed["domains"].add(destination)
+        return allowed
+    
+    def is_allowed(self, email: EmailAddress) -> bool:
+        if not self.allowed_destinations["restrictions_active"]:
+            return True
+        if email.addr.lower() in self.allowed_destinations["emails"]:
+            return True
+        if email.addr.lower().split("@")[1] in self.allowed_destinations["domains"]:
+            return True
+        return False
+
+
+def is_email_valid(addr_raw: str) -> bool:
+    return "@" in addr_raw  # TODO
+
+
 class MailerMock(Mailer):
-    sent: Dict[EmailAddress, List[str]] = field(default_factory=dict)
+    def __init__(self, allowed_mail_destinations: str | None = None):
+        super().__init__(allowed_mail_destinations)
+        self.sent: Dict[EmailAddress, List[str]] = {}
 
     def send_email(self, to: EmailAddress, text: str):
+        if not self.is_allowed(to):
+            raise ValueError(f"Email {to.obfuscated} is not allowed")
         if to not in self.sent:
             self.sent[to] = []
         self.sent[to].append(text)
 
 
 class MailerReal(Mailer):
-    def __init__(self, server: str, port: int, user: str, app_password: str, allowed_mails_domains: str | None = None):
+    def __init__(self, server: str, port: int, user: str, app_password: str, allowed_mail_destinations: str | None = None):
         self.server: str = server
         self.port: int = port
         self.user: str = user
         self.password: str = app_password
-        self.allowed_mails: dict = self.init_allowed_domains(allowed_mails_domains)
+        super().__init__(allowed_mail_destinations)
 
-    def init_allowed_domains(self, allowed_mails_domains: str | None):
-        restricted: dict = {
-            "domains": set(),
-            "emails": set(),
-        }
-        if allowed_mails_domains is not None:
-            row_data = allowed_mails_domains.split(",")
-            for row in row_data:
-                if "@" in row:
-                    restricted["emails"].add(row)
-                else:
-                    restricted["domains"].add(row)
-        return restricted
-    
-    def is_allowed(self, email: EmailAddress) -> bool:
-        if email.addr in self.allowed_mails["emails"]:
-            return True
-        if email.addr.split("@")[1] in self.allowed_mails["domains"]:
-            return True
-        return False
 
     def send_email(self, to: EmailAddress, text: str):
         if not self.is_allowed(to):
-            raise ValueError(f"Email {to.addr} is not allowed to send")
+            raise ValueError(f"Email {to.obfuscated} is not allowed")
         msg = MIMEText(text)
         msg["From"] = self.user
         msg["To"] = to.addr
@@ -115,3 +125,29 @@ class T(TestCase):
         self.assertEqual("...@..ww", EmailAddress("@www").obfuscated)
         self.assertEqual("...@..om", EmailAddress("@gmail.com").obfuscated)
         self.assertEqual("...@..", EmailAddress("").obfuscated)
+
+    def test_allowed_destinations(self):
+        ae1 = EmailAddress("abc@example.net")
+        ae2 = EmailAddress("abc@example.com")
+        ae3 = EmailAddress("john@example.net")
+        fe1 = EmailAddress("jane@gmail.com")
+        fe2 = EmailAddress("def@example.com")
+        mm = MailerMock("example.net,abc@example.com")
+        self.assertTrue(mm.is_allowed(ae1))
+        self.assertTrue(mm.is_allowed(ae2))
+        self.assertTrue(mm.is_allowed(ae3))
+        self.assertFalse(mm.is_allowed(fe1))
+        self.assertFalse(mm.is_allowed(fe2))
+        mm.send_email(ae1, "hello")
+        self.assertEqual(1, len(mm.sent))
+        with self.assertRaises(ValueError) as cm:
+            mm.send_email(fe1, "hello")
+        self.assertEqual(cm.exception.args[0], "Email ...@..om is not allowed")
+        self.assertEqual(1, len(mm.sent))
+
+    def test_allowed_destinations_inactive(self):
+        e1 = EmailAddress("abc@example.com")
+        e2 = EmailAddress("john@example.net")
+        mm = MailerMock()
+        self.assertTrue(mm.is_allowed(e1))
+        self.assertTrue(mm.is_allowed(e2))
