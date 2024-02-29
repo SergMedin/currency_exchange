@@ -33,7 +33,7 @@ if __name__ == "__main__":
             port=int(email_port),
             user=email_user,
             app_password=email_app_password,
-            allowed_mails_domains=email_allowed_mails_domain,
+            allowed_mail_destinations=email_allowed_mails_domain,
         )
     except:
         mailer = MailerMock()
