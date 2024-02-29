@@ -26,12 +26,14 @@ if __name__ == "__main__":
         email_app_password = os.environ["EMAIL_APP_PASSWORD"]
         email_server = os.environ["EMAIL_SERVER"]
         email_port = os.environ["EMAIL_PORT"]
+        email_allowed_mails_domain = os.environ.get("PERMITTED_MAIL_DOMAINS")
 
         mailer: Mailer = MailerReal(
             server=email_server,
             port=int(email_port),
             user=email_user,
             app_password=email_app_password,
+            allowed_mails_domains=email_allowed_mails_domain,
         )
     except:
         mailer = MailerMock()

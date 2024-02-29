@@ -92,6 +92,7 @@ jobs:
           echo EMAIL_PORT=${{ secrets.EMAIL_PORT }} >> .env
           echo EMAIL_USER=${{ secrets.EMAIL_USER }} >> .env
           echo EMAIL_APP_PASSWORD=${{ secrets.EMAIL_APP_PASSWORD }} >> .env
+          echo PERMITTED_MAIL_DOMAINS=${{ secrets.PERMITTED_MAIL_DOMAINS }} >> .env
           docker compose -f docker-compose.dev.yml pull
           docker compose -f docker-compose.dev.yml down
           docker compose -f docker-compose.dev.yml up -d
