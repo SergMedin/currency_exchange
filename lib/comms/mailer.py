@@ -122,15 +122,15 @@ class T(TestCase):
         e = EmailAddress("sdflsdjflksdjf")
         self.assertFalse(e.is_valid)
 
-        e = EmailAddress("john@gmail.com")
+        e = EmailAddress("john@example.com")
         self.assertTrue(e.is_valid)
 
-        e = EmailAddress("john@gmail.com")
-        self.assertEqual("john@gmail.com", e.addr)
+        e = EmailAddress("john@example.com")
+        self.assertEqual("john@example.com", e.addr)
 
     def test_mock(self):
         mm = MailerMock()
-        e = EmailAddress("john@gmail.com")
+        e = EmailAddress("john@example.com")
         mm.send_email(e, "hello")
         self.assertEqual(1, len(mm.sent))
         self.assertEqual(1, len(mm.sent[e]))
@@ -142,16 +142,16 @@ class T(TestCase):
         self.assertEqual("...@..", EmailAddress("j").obfuscated)
         self.assertEqual("...@..ww", EmailAddress("j@www").obfuscated)
         self.assertEqual("...@..ww", EmailAddress("@www").obfuscated)
-        self.assertEqual("...@..om", EmailAddress("@gmail.com").obfuscated)
+        self.assertEqual("...@..om", EmailAddress("@example.com").obfuscated)
         self.assertEqual("...@..", EmailAddress("").obfuscated)
 
     def test_allowed_destinations(self):
-        ae1 = EmailAddress("abc@mail.ru")
-        ae2 = EmailAddress("abc@mail.ru")
-        ae3 = EmailAddress("john@gmail.com")
-        fe1 = EmailAddress("jane@mail.ru")
-        fe2 = EmailAddress("def@gmail.ru")
-        mm = MailerMock("gmail.com,abc@mail.ru")
+        ae1 = EmailAddress("abc@example.ru")
+        ae2 = EmailAddress("abc@example.com")
+        ae3 = EmailAddress("john@example.com")
+        fe1 = EmailAddress("jane@example.org")
+        fe2 = EmailAddress("def@example.ru")
+        mm = MailerMock("example.com,abc@example.ru")
         self.assertTrue(mm.is_allowed(ae1))
         self.assertTrue(mm.is_allowed(ae2))
         self.assertTrue(mm.is_allowed(ae3))
@@ -161,12 +161,12 @@ class T(TestCase):
         self.assertEqual(1, len(mm.sent))
         with self.assertRaises(ValueError) as cm:
             mm.send_email(fe1, "hello")
-        self.assertEqual(cm.exception.args[0], "Email ...@..ru is not allowed")
+        self.assertEqual(cm.exception.args[0], "Email ...@..rg is not allowed")
         self.assertEqual(1, len(mm.sent))
 
     def test_allowed_destinations_inactive(self):
-        e1 = EmailAddress("abc@mail.ru")
-        e2 = EmailAddress("john@gmail.com")
+        e1 = EmailAddress("abc@example.ru")
+        e2 = EmailAddress("john@example.com")
         mm = MailerMock()
         self.assertTrue(mm.is_allowed(e1))
         self.assertTrue(mm.is_allowed(e2))
