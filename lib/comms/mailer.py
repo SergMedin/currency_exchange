@@ -66,18 +66,11 @@ class Mailer:
         return False
 
 
-# def is_email_valid(addr_raw: str) -> bool:
-#     return "@" in addr_raw  # TODO
-
-
 def is_email_valid(addr_raw: str) -> Dict[str, str | bool]:
     try:
-        # Валидация и нормализация адреса электронной почты
-        valid = validate_email(addr_raw)
-        # Возвращаем нормализованный адрес электронной почты, если он валиден
+        valid = validate_email(addr_raw, check_deliverability=False)
         return {"result": True, "normalized_email": valid.normalized}
     except EmailNotValidError as e:
-        # В случае ошибки валидации возвращаем сообщение об ошибке
         return {"result": False, "normalized_email": addr_raw}
 
 
