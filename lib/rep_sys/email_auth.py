@@ -53,7 +53,9 @@ class EmailAuthenticator:
 
         logging.info(f"Sending code {code} to {eaddr.obfuscated} ...")
         try:
-            self._mailer.send_email(EmailAddress(email), f"Your code for Exchange Bot is {code}")
+            self._mailer.send_email(
+                EmailAddress(email), f"Your code for Exchange Bot is {code}"
+            )
         except Exception as e:
             logging.exception(f"Failed to send code to {eaddr.obfuscated}: {e}")
             raise
@@ -164,30 +166,30 @@ class T(TestCase):
         self.assertEqual(EmlAuthState.WAIT_EMAIL, self.au.state)
 
     def test_happy_path(self):
-        self.au.send_email("john@example.net")
+        self.au.send_email("john@gmail.com")
         self.assertEqual(EmlAuthState.WAIT_CODE, self.au.state)
         self.assertEqual(1, len(self.mm.sent))
         self.assertIn(
-            self.au._pers.code, self.mm.sent[EmailAddress("john@example.net")][0]
+            self.au._pers.code, self.mm.sent[EmailAddress("john@gmail.com")][0]
         )
 
         res = self.au.is_code_valid(self.au._pers.code)
         self.assertTrue(res)
 
     def test_persistence(self):
-        self.au.send_email("john@example.net")
+        self.au.send_email("john@gmail.com")
         del self.au
         other = EmailAuthenticator(RepSysUserId(123), self.mm, self.eng)
         res = other.is_code_valid(other._pers.code)
         self.assertTrue(res)
 
     def test_wrong_code(self):
-        self.au.send_email("john@example.net")
+        self.au.send_email("john@gmail.com")
         res = self.au.is_code_valid("wrongcode")
         self.assertFalse(res)
 
     def test_attempts_limiter(self):
-        self.au.send_email("john@example.net")
+        self.au.send_email("john@gmail.com")
         self.au.is_code_valid("wrongcode")
         self.au.is_code_valid("wrongcode")
         self.au.is_code_valid("wrongcode")
@@ -196,18 +198,18 @@ class T(TestCase):
         )
 
     def test_reset(self):
-        self.au.send_email("john@example.net")
+        self.au.send_email("john@gmail.com")
         self.assertEqual(EmlAuthState.WAIT_CODE, self.au.state)
         self.assertEqual(1, len(self.mm.sent))
         self.assertIn(
-            self.au._pers.code, self.mm.sent[EmailAddress("john@example.net")][0]
+            self.au._pers.code, self.mm.sent[EmailAddress("john@gmail.com")][0]
         )
 
         self.au.reset()
         self.assertEqual(EmlAuthState.WAIT_EMAIL, self.au.state)
 
     def test_state_expiration(self):
-        self.au.send_email("john@example.net")
+        self.au.send_email("john@gmail.com")
         res = self.au.is_code_valid(self.au._pers.code)
         self.assertTrue(res)
 

@@ -1,17 +1,23 @@
 from dataclasses import dataclass, field
 from email.mime.text import MIMEText
+from email_validator import validate_email, EmailNotValidError
 import smtplib
 from typing import Dict, List
 from unittest import TestCase
+from typing import Tuple
 
 
 @dataclass
 class EmailAddress:
-    addr: str
+    original_email: str
+
+    @property
+    def addr(self) -> str:
+        return str(is_email_valid(self.original_email)["normalized_email"])
 
     @property
     def is_valid(self) -> bool:
-        return is_email_valid(self.addr)
+        return bool(is_email_valid(self.original_email)["result"])
 
     @property
     def obfuscated(self) -> str:
@@ -24,13 +30,16 @@ class EmailAddress:
     def __hash__(self) -> int:
         return hash(self.addr)
 
+
 class Mailer:
     def __init__(self, allowed_mail_destinations: str | None = None):
-        self.allowed_destinations: dict = self.init_allowed_destinations(allowed_mail_destinations)
+        self.allowed_destinations: dict = self.init_allowed_destinations(
+            allowed_mail_destinations
+        )
 
     def send_email(self, to: "EmailAddress", text: str):
         raise NotImplementedError()
-    
+
     def init_allowed_destinations(self, allowed_mail_destinations: str | None) -> dict:
         allowed: dict = {
             "domains": set(),
@@ -46,7 +55,7 @@ class Mailer:
                 else:
                     allowed["domains"].add(destination)
         return allowed
-    
+
     def is_allowed(self, email: EmailAddress) -> bool:
         if not self.allowed_destinations["restrictions_active"]:
             return True
@@ -57,8 +66,19 @@ class Mailer:
         return False
 
 
-def is_email_valid(addr_raw: str) -> bool:
-    return "@" in addr_raw  # TODO
+# def is_email_valid(addr_raw: str) -> bool:
+#     return "@" in addr_raw  # TODO
+
+
+def is_email_valid(addr_raw: str) -> Dict[str, str | bool]:
+    try:
+        # Валидация и нормализация адреса электронной почты
+        valid = validate_email(addr_raw)
+        # Возвращаем нормализованный адрес электронной почты, если он валиден
+        return {"result": True, "normalized_email": valid.normalized}
+    except EmailNotValidError as e:
+        # В случае ошибки валидации возвращаем сообщение об ошибке
+        return {"result": False, "normalized_email": addr_raw}
 
 
 class MailerMock(Mailer):
@@ -75,13 +95,19 @@ class MailerMock(Mailer):
 
 
 class MailerReal(Mailer):
-    def __init__(self, server: str, port: int, user: str, app_password: str, allowed_mail_destinations: str | None = None):
+    def __init__(
+        self,
+        server: str,
+        port: int,
+        user: str,
+        app_password: str,
+        allowed_mail_destinations: str | None = None,
+    ):
         self.server: str = server
         self.port: int = port
         self.user: str = user
         self.password: str = app_password
         super().__init__(allowed_mail_destinations)
-
 
     def send_email(self, to: EmailAddress, text: str):
         if not self.is_allowed(to):
@@ -103,15 +129,15 @@ class T(TestCase):
         e = EmailAddress("sdflsdjflksdjf")
         self.assertFalse(e.is_valid)
 
-        e = EmailAddress("john@example.net")
+        e = EmailAddress("john@gmail.com")
         self.assertTrue(e.is_valid)
 
-        e = EmailAddress("john@example.net")
-        self.assertEqual("john@example.net", e.addr)
+        e = EmailAddress("john@gmail.com")
+        self.assertEqual("john@gmail.com", e.addr)
 
     def test_mock(self):
         mm = MailerMock()
-        e = EmailAddress("john@example.net")
+        e = EmailAddress("john@gmail.com")
         mm.send_email(e, "hello")
         self.assertEqual(1, len(mm.sent))
         self.assertEqual(1, len(mm.sent[e]))
@@ -127,12 +153,12 @@ class T(TestCase):
         self.assertEqual("...@..", EmailAddress("").obfuscated)
 
     def test_allowed_destinations(self):
-        ae1 = EmailAddress("abc@example.net")
-        ae2 = EmailAddress("abc@example.com")
-        ae3 = EmailAddress("john@example.net")
-        fe1 = EmailAddress("jane@gmail.com")
-        fe2 = EmailAddress("def@example.com")
-        mm = MailerMock("example.net,abc@example.com")
+        ae1 = EmailAddress("abc@mail.ru")
+        ae2 = EmailAddress("abc@mail.ru")
+        ae3 = EmailAddress("john@gmail.com")
+        fe1 = EmailAddress("jane@mail.ru")
+        fe2 = EmailAddress("def@gmail.ru")
+        mm = MailerMock("gmail.com,abc@mail.ru")
         self.assertTrue(mm.is_allowed(ae1))
         self.assertTrue(mm.is_allowed(ae2))
         self.assertTrue(mm.is_allowed(ae3))
@@ -142,12 +168,12 @@ class T(TestCase):
         self.assertEqual(1, len(mm.sent))
         with self.assertRaises(ValueError) as cm:
             mm.send_email(fe1, "hello")
-        self.assertEqual(cm.exception.args[0], "Email ...@..om is not allowed")
+        self.assertEqual(cm.exception.args[0], "Email ...@..ru is not allowed")
         self.assertEqual(1, len(mm.sent))
 
     def test_allowed_destinations_inactive(self):
-        e1 = EmailAddress("abc@example.com")
-        e2 = EmailAddress("john@example.net")
+        e1 = EmailAddress("abc@mail.ru")
+        e2 = EmailAddress("john@gmail.com")
         mm = MailerMock()
         self.assertTrue(mm.is_allowed(e1))
         self.assertTrue(mm.is_allowed(e2))
