@@ -6,18 +6,27 @@ from typing import Dict, List
 from unittest import TestCase
 from typing import Tuple
 
+@dataclass
+class EmailValidationResult:
+    result: bool
+    original_email: str
+    normalized_email: str | None = None
 
 @dataclass
 class EmailAddress:
     original_email: str
+    _validation_result: EmailValidationResult | None = None
+
+    def __post_init__(self):
+        self._validation_result = validate_and_normalize_email(self.original_email)
 
     @property
     def addr(self) -> str:
-        return str(is_email_valid(self.original_email)["normalized_email"])
+        return self._validation_result.normalized_email if self._validation_result and self._validation_result.normalized_email else self.original_email
 
     @property
     def is_valid(self) -> bool:
-        return bool(is_email_valid(self.original_email)["result"])
+        return self._validation_result.result if self._validation_result else False
 
     @property
     def obfuscated(self) -> str:
@@ -65,13 +74,13 @@ class Mailer:
             return True
         return False
 
-
-def is_email_valid(addr_raw: str) -> Dict[str, str | bool]:
+def validate_and_normalize_email(addr_raw: str) -> EmailValidationResult:
     try:
         valid = validate_email(addr_raw, check_deliverability=False)
-        return {"result": True, "normalized_email": valid.normalized}
+        return EmailValidationResult(result=True, original_email=addr_raw, normalized_email=valid.normalized)
     except EmailNotValidError as e:
-        return {"result": False, "normalized_email": addr_raw}
+        return EmailValidationResult(result=False, original_email=addr_raw, normalized_email=None)
+
 
 
 class MailerMock(Mailer):
