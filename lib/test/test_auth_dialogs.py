@@ -30,7 +30,7 @@ class TestMain(ExchgTestBase):
     def test_auth_expiration(self):
         self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="auth")
         with patch("random.randint", return_value=1234):
-            self.tg.emulate_incoming_message(222, "Noob", "a@b")
+            self.tg.emulate_incoming_message(222, "Noob", "email@example.com")
         self.tg.emulate_incoming_message(222, "Noob", "1234")
         self.assertIn("Вы успешно авторизованы", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="ok")
@@ -89,7 +89,7 @@ class TestEnterEmailStep(ExchgTestBase):
         self.assertIn("Invalid email", self.tg.outgoing[-2].text)
 
     def test_ok_email(self):
-        self.tg.emulate_incoming_message(222, "Noob", "a@b")
+        self.tg.emulate_incoming_message(222, "Noob", "email@example.com")
         self.assertIn("Введите код:", self.tg.outgoing[-1].text)
 
 
@@ -98,7 +98,7 @@ class TestEnterCodeStep(ExchgTestBase):
         super().setUp()
         self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="auth")
         with patch("random.randint", return_value=1234):
-            self.tg.emulate_incoming_message(222, "Noob", "a@b")
+            self.tg.emulate_incoming_message(222, "Noob", "email@example.com")
 
     def test_ask_code(self):
         self.assertIn("Введите код:", self.tg.outgoing[-1].text)
@@ -138,7 +138,7 @@ class TestAuthenticatedStep(ExchgTestBase):
         super().setUp()
         self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="auth")
         with patch("random.randint", return_value=1234):
-            self.tg.emulate_incoming_message(222, "Noob", "a@b")
+            self.tg.emulate_incoming_message(222, "Noob", "email@example.com")
         self.tg.emulate_incoming_message(222, "Noob", "1234")
 
     def test_authed(self):
