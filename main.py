@@ -11,6 +11,7 @@ from lib.comms.mailer import Mailer, MailerReal, MailerMock
 from lib.db_sqla import SqlDb
 from lib.logger import setup_logging
 from lib.rep_sys.rep_sys import ReputationSystem
+from lib.rep_sys import rep_id
 
 
 if __name__ == "__main__":
@@ -39,6 +40,10 @@ if __name__ == "__main__":
         mailer = MailerMock()
         logging.exception("Failed to create MailerReal, using MailerMock")
 
+    try:
+        rep_id.EMAIL_SALT = os.environ["EMAIL_SALT"]
+    except KeyError:
+        logging.warning("Using default EMAIL_SALT")
 
     try:
         admin_contacts_raw = os.environ["ADMINS_TG"]

@@ -20,21 +20,22 @@ class EmailAuthenticator:
     @dataclass
     class State:
         state: "EmlAuthState" = field(default_factory=lambda: EmlAuthState.WAIT_EMAIL)
+        email_hash: Optional[str] = None
         code: Optional[str] = None
         code_ctime: Optional[int] = None
         attempts: int = 0
 
     def __init__(
         self,
-        user_id: RepSysUserId,
+        uid: RepSysUserId,
         mailer: Mailer,
         db_eng: Engine,
         max_attempts: int = _MAX_ATTEMPTS,
     ):
+        self._user_id = uid
         self._mailer = mailer
         self._max_attempts = max_attempts
         self._db_eng = db_eng
-        self._user_id = user_id
         self._pers = EmailAuthenticator.State()
 
         _Base.metadata.create_all(self._db_eng)
@@ -44,10 +45,21 @@ class EmailAuthenticator:
     def state(self) -> "EmlAuthState":
         return self._pers.state
 
+    @property
+    def user_id(self) -> RepSysUserId:
+        return RepSysUserId(self._user_id.telegram_user_id, self._pers.email_hash)
+
     def send_email(self, email: str):
         eaddr = EmailAddress(email)
         if not eaddr.is_valid:
             raise ValueError(f"Invalid email {email}")
+
+        self._pers.email_hash = RepSysUserId.hash_email(email)
+        if (
+            self._user_id.email_hash
+            and self._user_id.email_hash != self._pers.email_hash
+        ):
+            raise ValueError("Email hash mismatch")
 
         code = self._renerate_rnd_code()
 
@@ -109,6 +121,7 @@ class EmailAuthenticator:
                 session.add(dbo)
             self._pers.state = EmlAuthState(dbo.state)
             self._pers.code = dbo.code
+            self._pers.email_hash = dbo.email_hash
             self._pers.code_ctime = dbo.code_ctime
             self._pers.attempts = dbo.attempts
             session.commit()
@@ -120,6 +133,7 @@ class EmailAuthenticator:
                 assert dbo
                 dbo.state = self._pers.state.value
                 dbo.code = self._pers.code
+                dbo.email_hash = self._pers.email_hash
                 dbo.code_ctime = self._pers.code_ctime
                 dbo.attempts = self._pers.attempts
                 session.commit()
@@ -151,6 +165,7 @@ class _EmailAuthState(_Base):
     telegram_user_id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[int] = mapped_column(nullable=False)
     attempts: Mapped[int] = mapped_column(nullable=False)
+    email_hash: Mapped[str] = mapped_column(unique=True, nullable=True)
     code: Mapped[Optional[str]] = mapped_column()
     code_ctime: Mapped[Optional[int]] = mapped_column()
 
@@ -208,6 +223,18 @@ class T(TestCase):
         self.au.reset()
         self.assertEqual(EmlAuthState.WAIT_EMAIL, self.au.state)
 
+    def test_delete(self):
+        self.au.send_email("john@example.net")
+        self.assertEqual(EmlAuthState.WAIT_CODE, self.au.state)
+        self.assertEqual(1, len(self.mm.sent))
+        self.assertIn(
+            self.au._pers.code, self.mm.sent[EmailAddress("john@example.net")][0]
+        )
+
+        self.au.delete()
+        self.au = EmailAuthenticator(RepSysUserId(123), self.mm, self.eng)
+        self.assertEqual(EmlAuthState.WAIT_EMAIL, self.au.state)
+
     def test_state_expiration(self):
         self.au.send_email("john@example.net")
         res = self.au.is_code_valid(self.au._pers.code)
@@ -219,3 +246,14 @@ class T(TestCase):
             self.assertRaises(
                 TooManyAttemptsOrExpiredError, self.au.is_code_valid, self.au._pers.code
             )
+
+    def test_hash_missmatch(self):
+        self.au._user_id.email_hash = "hash"
+        self.assertRaises(ValueError, self.au.send_email, "test@example.net")
+
+    def test_hash_match(self):
+        hash = RepSysUserId.hash_email("test@example.net")
+        self.au._user_id.email_hash = hash
+        self.au.send_email("test@example.net")
+        self.assertEqual(EmlAuthState.WAIT_CODE, self.au.state)
+        self.assertEqual(hash, self.au.user_id.email_hash)

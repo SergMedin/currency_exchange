@@ -19,7 +19,13 @@ from .botlib.stories import (
 from . import dialogs
 from . import business_rules
 from .db import Db
-from .botlib.tg import Tg, TgIncomingMsg, TgOutgoingMsg, InlineKeyboardButton, TelegramReal
+from .botlib.tg import (
+    Tg,
+    TgIncomingMsg,
+    TgOutgoingMsg,
+    InlineKeyboardButton,
+    TelegramReal,
+)
 from .exchange import Exchange
 from .data import Match, Order, User, OrderType
 from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMockClient
@@ -43,7 +49,7 @@ class Application(ApplicationBase):
         self._tg.on_message = self._on_incoming_tg_message
         self._rep_sys = rep_sys
         self._mailer = mailer
-        
+
         # FIXME: should be (1) persistent, (2) LRU with limit, (3) created only when really needed
         self._sessions: dict[int, dialogs.Main] = {}
 
@@ -56,13 +62,14 @@ class Application(ApplicationBase):
                 "disclaimer_message.md",
             )
         )
-        
+
         currency_converter = CurrencyConverter(currency_client)
         self._ex = Exchange(self._db, currency_converter, self._on_match)
         self._validator = business_rules.Validator()
 
-    def get_email_authenticator(self, user_id: RepSysUserId) -> EmailAuthenticator:
-        return EmailAuthenticator(user_id, self._mailer, self._db.engine)
+    def get_email_authenticator(self, uid: RepSysUserId) -> EmailAuthenticator:
+        ruid = self._rep_sys.enrich_user_id(uid)
+        return EmailAuthenticator(ruid, self._mailer, self._db.engine)
 
     def _send_message(
         self,

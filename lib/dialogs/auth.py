@@ -66,6 +66,11 @@ class AuthEnterEmail(ExchgController):
             return self.edit_last(e, res)
         elif isinstance(e, Message):
             assert self.session.email_auth
+            wannabe_uid = RepSysUserId.from_email(e.text)
+            wannabe_uid.telegram_user_id = e.user_id
+            if not self.session.rep_sys.is_id_consistent(wannabe_uid):
+                return OutMessage("Неверный email") + self.render()
+
             try:
                 self.session.email_auth.send_email(e.text)
             except ValueError as ex:
@@ -104,10 +109,10 @@ class AuthEnterCode(ExchgController):
             assert self.session.email_auth
             try:
                 if self.session.email_auth.is_code_valid(e.text):
-                    self.session.rep_sys.set_authenticity(
-                        RepSysUserId(self.session.user_id), True
-                    )
+                    uid = self.session.email_auth.user_id
+                    self.session.rep_sys.set_authenticity(uid, True)
                     self.session.email_auth.delete()
+                    self.session.email_auth = None
                     return self.close()
                 else:
                     return OutMessage("Неверный код") + self.render()
