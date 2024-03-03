@@ -14,7 +14,8 @@ from lib.lazy_load import LazyMessageLoader
 from lib.data import User
 from .session import Session
 from .base import ExchgController
-# from .place_order import CreateOrder
+from .place_order import CreateOrder
+from .auth import AuthMain
 
 _help_message_loader = LazyMessageLoader(
     os.path.join(os.path.dirname(__file__), "tg_messages", "help_message.md")
@@ -27,25 +28,35 @@ _start_message_loader = LazyMessageLoader(
 
 class Main(ExchgController):
     def __init__(self, session: Session):
-        super().__init__(
-            text=("Выберите действие:\n\n⚠️В настоящий момент операции по созданию заявок "
-                  "недоступны. Ведется разработка системы авторизации пользователей"),
-            parse_mode="Markdown",
-            buttons=[
-                [
-                    # Button("Создать заказ", "create_order"),
-                    Button("Мои заявки", "my_orders"),
-                ],
-                [Button("Статистика", "statistics"), Button("Помощь", "help")],
+        self._base_buttons = [
+            [
+                Button("Создать заказ", "create_order"),
+                Button("Мои заявки", "my_orders"),
             ],
+            [Button("Статистика", "statistics"), Button("Помощь", "help")],
+        ]
+
+        super().__init__(
+            text="Выберите действие:",
+            parse_mode="Markdown",
+            buttons=self._base_buttons,
             _session=session,
         )
+
         self._a2c = {
-            # "create_order": CreateOrder,
+            "create_order": CreateOrder,
             "my_orders": MyOrders,
             "statistics": Statistics,
             "help": Help,
+            "auth": AuthMain,
         }
+
+    def render(self) -> OutMessage:
+        logging.info(f"Main.render: is_authenticated={self.is_authenticated}")
+        self.buttons = self._base_buttons[:]
+        if not self.is_authenticated:
+            self.buttons.append([Button("Авторизоваться", "auth")])
+        return super().render()
 
     def process_event(self, e: Event) -> OutMessage:
         if isinstance(e, Command):

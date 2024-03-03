@@ -3,6 +3,10 @@ from decimal import Decimal
 import datetime
 import os
 import logging
+from lib.application_base import ApplicationBase
+from lib.comms.mailer import Mailer, MailerMock
+from lib.rep_sys.email_auth import EmailAuthenticator
+from lib.rep_sys.rep_id import RepSysUserId
 
 
 from .botlib.stories import (
@@ -11,32 +15,40 @@ from .botlib.stories import (
     Message,
     ButtonAction,
     Button,
-)  # FIXME: move this stuff to the dedicated repo
+)
 from . import dialogs
 from . import business_rules
 from .db import Db
-from .botlib.tg import Tg, TgIncomingMsg, TgOutgoingMsg, InlineKeyboardButton
+from .botlib.tg import (
+    Tg,
+    TgIncomingMsg,
+    TgOutgoingMsg,
+    InlineKeyboardButton,
+    TelegramReal,
+)
 from .exchange import Exchange
-from .gsheets_loger import GSheetsLoger
 from .data import Match, Order, User, OrderType
 from .currency_rates import CurrencyConverter, CurrencyFreaksClient, CurrencyMockClient
 from .lazy_load import LazyMessageLoader
+from .rep_sys import ReputationSystem
 
 
-class Application:
+class Application(ApplicationBase):
     def __init__(
         self,
         db: Db,
         tg: Tg,
         currency_client: CurrencyFreaksClient | CurrencyMockClient,
-        zmq_orders_log_endpoint=None,
-        log_spreadsheet_key=None,
+        rep_sys: ReputationSystem,
+        mailer: Mailer,
         admin_contacts: Optional[list[int]] = None,
     ):
         self._admin_contacts = admin_contacts
         self._db = db
         self._tg = tg
         self._tg.on_message = self._on_incoming_tg_message
+        self._rep_sys = rep_sys
+        self._mailer = mailer
 
         # FIXME: should be (1) persistent, (2) LRU with limit, (3) created only when really needed
         self._sessions: dict[int, dialogs.Main] = {}
@@ -52,23 +64,12 @@ class Application:
         )
 
         currency_converter = CurrencyConverter(currency_client)
-        self._ex = Exchange(
-            self._db, currency_converter, self._on_match, zmq_orders_log_endpoint
-        )
-
-        # FIXME: no env vars reading stuff should be here
-        if zmq_orders_log_endpoint:
-            assert log_spreadsheet_key is not None
-            worksheet_title = os.getenv("GOOGLE_SPREADSHEET_SHEET_TITLE", None)
-            self._loger = GSheetsLoger(
-                zmq_orders_log_endpoint, log_spreadsheet_key, worksheet_title
-            )
-            self._loger.start()
-
+        self._ex = Exchange(self._db, currency_converter, self._on_match)
         self._validator = business_rules.Validator()
 
-    def shutdown(self):
-        self._loger.stop()
+    def get_email_authenticator(self, uid: RepSysUserId) -> EmailAuthenticator:
+        ruid = self._rep_sys.enrich_user_id(uid)
+        return EmailAuthenticator(ruid, self._mailer, self._db.engine)
 
     def _send_message(
         self,
@@ -104,7 +105,10 @@ class Application:
         try:
             _root = self._sessions[m.user_id]
         except KeyError:
-            _root = dialogs.Main(dialogs.Session(m.user_id, m.user_name, self._ex))
+            session = dialogs.Session(
+                m.user_id, m.user_name, self, self._ex, rep_sys=self._rep_sys
+            )
+            _root = dialogs.Main(session)
             self._sessions[m.user_id] = _root
 
         top = _root.get_current_active()
@@ -224,9 +228,9 @@ class Application:
         )
         self._tg.send_message(TgOutgoingMsg(buyer_id, buyer_name, message_buyer))
         self._tg.send_message(TgOutgoingMsg(seller_id, seller_name, message_seller))
-        self._notyfy_admins(m)
+        self._notify_admins_match(m)
 
-    def _notyfy_admins(self, m: Match):
+    def _notify_admins_match(self, m: Match):
         def render_order(o: Order) -> str:
             return (
                 f"\tuser: @{o.user.name} ({o.user.id})\n"

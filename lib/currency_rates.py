@@ -67,7 +67,7 @@ class CurrencyConverter:
     def __init__(self, currency_client=None):
         self.currency_client = currency_client
 
-    def get_rate(self, from_currency, to_currency):
+    def get_rate(self, from_currency: str, to_currency: str):
         from_rate = self.currency_client.get_rate(from_currency)
         to_rate = self.currency_client.get_rate(to_currency)
         if from_rate and to_rate:

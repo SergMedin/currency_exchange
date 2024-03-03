@@ -87,15 +87,15 @@ jobs:
           echo POSTGRES_USER=${{ secrets.POSTGRES_USER }} >> .env
           echo POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} >> .env
           echo POSTGRES_DB=${{ secrets.POSTGRES_DB }} >> .env
-          echo GOOGLE_ACC_KEY_FILE=${{ secrets.GOOGLE_ACC_KEY_FILE }} >> .env
-          echo ZMQ_ORDERS_LOG_ENDPOINT=${{ secrets.ZMQ_ORDERS_LOG_ENDPOINT }} >> .env
           echo SILENCE_WARNINGS_ENV_KEY=${{ secrets.SILENCE_WARNINGS_ENV_KEY }} >> .env
-          echo GOOGLE_SPREADSHEET_SHEET_TITLE=${{ secrets.GOOGLE_SPREADSHEET_SHEET_TITLE }} >> .env
           echo EXCH_CURRENCYFREAKS_TOKEN=${{ secrets.EXCH_CURRENCYFREAKS_TOKEN }} >> .env
           echo ADMINS_TG=${{ secrets.ADMINS_TG }} >> .env
-          rm -f ${{ secrets.GOOGLE_ACC_KEY_FILE }}
-          touch ${{ secrets.GOOGLE_ACC_KEY_FILE }}
-          echo '${{ secrets.GOOGLE_ACC_FILE_CONTENT }}' >> ${{ secrets.GOOGLE_ACC_KEY_FILE }}
+          echo EMAIL_SALT=${{ secrets.EMAIL_SALT }} >> .env
+          echo EMAIL_SERVER=${{ secrets.EMAIL_SERVER }} >> .env
+          echo EMAIL_PORT=${{ secrets.EMAIL_PORT }} >> .env
+          echo EMAIL_USER=${{ secrets.EMAIL_USER }} >> .env
+          echo EMAIL_APP_PASSWORD=${{ secrets.EMAIL_APP_PASSWORD }} >> .env
+          echo PERMITTED_MAIL_DOMAINS=${{ secrets.PERMITTED_MAIL_DOMAINS }} >> .env
           docker compose -f docker-compose.yml pull
           docker compose -f docker-compose.yml down
           docker compose -f docker-compose.yml up -d
