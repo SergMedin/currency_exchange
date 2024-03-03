@@ -36,4 +36,5 @@ typing_extensions==4.9.0
 urllib3==2.1.0
 pytest==8.0.1
 pytest-xdist==3.5.0
-email_validator=2.1.1
+coverage
+email_validator==2.1.1
