@@ -44,7 +44,7 @@ class TestMain(ExchgTestBase):
     def test_email_milti_use_protection(self):
         self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="auth")
         with patch("random.randint", return_value=1234):
-            self.tg.emulate_incoming_message(222, "Noob", "a@b")
+            self.tg.emulate_incoming_message(222, "Noob", "ab@example.com")
         self.tg.emulate_incoming_message(222, "Noob", "1234")
         self.assertIn("Вы успешно авторизованы", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="ok")
@@ -58,11 +58,11 @@ class TestMain(ExchgTestBase):
         self.tg.emulate_incoming_message(222, "Noob", "", keyboard_callback="auth")
         self.assertIn("Введите ваш email", self.tg.outgoing[-1].text)
 
-        self.tg.emulate_incoming_message(222, "Noob", "anoter@b")
+        self.tg.emulate_incoming_message(222, "Noob", "anoter@example.com")
         self.assertIn("Неверный email", self.tg.outgoing[-2].text)
 
         self.tg.emulate_incoming_message(777, "Noob", "", keyboard_callback="auth")
-        self.tg.emulate_incoming_message(777, "Noob", "a@b")
+        self.tg.emulate_incoming_message(777, "Noob", "ab@example.com")
         self.assertIn("Неверный email", self.tg.outgoing[-2].text)
 
 
