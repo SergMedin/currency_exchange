@@ -129,7 +129,7 @@ class EnterPriceStep(ExchgController):
             parent=parent,
             text=(
                 f"{REL_RATE_REFRESH_FREQUENCY_DISCLAIMER}\nКурс биржи: ≈{rate_s} (обновляется несколько раз в день)\n\n"
-                "Введите курс обмена или выберите опцию 'Относительный курс' чтобы ввести относительный курс"
+                "Введите курс обмена или выберите одну из опций с относительным курсом:"
             ),
             buttons=[
                 [
