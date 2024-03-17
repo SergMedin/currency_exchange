@@ -142,25 +142,106 @@ class TestInputNumbersFormatHandling(TestOrderCreationDialogs):
         self.assertIn("400.1", self.tg.outgoing[-1].text)
 
 
+class TestCreateOrder(TestOrderCreationDialogs):
+    def test_simple(self):
+        self._create_order(stop_on_type=True)
+        self.assertIn("Выберите тип заказа", self.tg.outgoing[-1].text)
+
+    def test_cancel(self):
+        self._create_order(stop_on_type=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="cancel")
+        self.assertIn("Выберите действие", self.tg.outgoing[-1].text)
+
+    def test_text(self):
+        self._create_order(stop_on_type=True)
+        self.tg.emulate_incoming_message(1, "Joe", "random text")
+        self.assertIn("Выберите тип заказа", self.tg.outgoing[-1].text)
+
+class TestChooseOrderTypeStep(TestOrderCreationDialogs):
+    def test_choose_rub_amd(self):
+        self._create_order(stop_on_type=True)
+        self.assertIn("Выберите тип заказа", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="rub_amd")
+        self.assertIn("Сколько рублей продаете?", self.tg.outgoing[-1].text)
+
+    def test_choose_amd_rub(self):
+        self._create_order(stop_on_type=True)
+        self.assertIn("Выберите тип заказа", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="amd_rub")
+        self.assertIn("Сколько рублей хотите купить?", self.tg.outgoing[-1].text)
+
+    def test_enter_random_text(self):
+        self._create_order(stop_on_type=True)
+        self.assertIn("Выберите тип заказа", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "random text")
+        self.assertIn("Выберите тип заказа", self.tg.outgoing[-1].text)
+    
+    def test_cancel(self):
+        self._create_order(stop_on_type=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="cancel")
+        self.assertIn("Выберите действие:", self.tg.outgoing[-1].text)
+
+class TestEnterAmountStep(TestOrderCreationDialogs):
+    def test_simple(self):
+        self._create_order(stop_on_amount=True)
+        self.assertIn("Сколько рублей продаете?", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "1000")
+        self.assertIn("Введите курс", self.tg.outgoing[-1].text)
+
+    def test_negative_value(self):
+        self._create_order(stop_on_amount=True)
+        self.assertIn("Сколько рублей продаете?", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "-1")
+        self.assertIn("Сумма должна быть более 0", self.tg.outgoing[-2].text)
+
+    def test_zero_value(self):
+        self._create_order(stop_on_amount=True)
+        self.assertIn("Сколько рублей продаете?", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "0")
+        self.assertIn("Сумма должна быть более 0", self.tg.outgoing[-2].text)
+    
+    def test_invalid_number(self):
+        self._create_order(stop_on_amount=True)
+        self.assertIn("Сколько рублей продаете?", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "abc")
+        self.assertIn("Сумма должна быть задана числом", self.tg.outgoing[-2].text)
+
+    def test_float_number_comma(self):
+        self._create_order(stop_on_amount=True)
+        self.assertIn("Сколько рублей продаете?", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "1,1")
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
+
+    def test_float_number_dot(self):
+        self._create_order(stop_on_amount=True)
+        self.assertIn("Сколько рублей продаете?", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "1.1")
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
+
+
 class TestEnterRateStep(TestOrderCreationDialogs):
     def test_simple(self):
         self._create_order(stop_on_rate=True)
-        self.assertIn("Введите курс", self.tg.outgoing[-1].text)
-        self.tg.emulate_incoming_message(1, "Joe", "4.5")
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="relative")
+        self.assertIn("Укажите относительный курс", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "1")
         self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
 
     def test_invalid_number(self):
         self._create_order(stop_on_rate=True)
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "abc")
         self.assertIn("Курс обмена должен быть числом", self.tg.outgoing[-2].text)
 
     def test_negative(self):
         self._create_order(stop_on_rate=True)
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "-1")
         self.assertIn("Курс обмена должен быть больше 0", self.tg.outgoing[-2].text)
 
     def test_zero(self):
         self._create_order(stop_on_rate=True)
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
         self.tg.emulate_incoming_message(1, "Joe", "0")
         self.assertIn("Курс обмена должен быть больше 0", self.tg.outgoing[-2].text)
 
@@ -195,3 +276,132 @@ class TestEnterRateStep(TestOrderCreationDialogs):
         self.assertIn("Введите курс", self.tg.outgoing[-1].text)
         x.assert_called_once()
         x.assert_called_with("EnterPriceStep: Unknown action: bad_button")
+
+
+class TestEnterRelativeRateStep(TestOrderCreationDialogs):
+    def test_simple(self):
+        self._create_order(stop_on_rate=True)
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="rel:0")
+        self.assertIn("Подтвердите параметры заказа:", self.tg.outgoing[-1].text)
+
+    def test_invalid_number(self):
+        self._create_order(stop_on_rate=True)
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "abc")
+        self.assertIn("Курс обмена должен быть числом", self.tg.outgoing[-2].text)
+
+    def test_negative(self):
+        self._create_order(stop_on_rate=True)
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "-1")
+        self.assertIn("Курс обмена должен быть больше 0", self.tg.outgoing[-2].text)
+
+    def test_zero(self):
+        self._create_order(stop_on_rate=True)
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "0")
+        self.assertIn("Курс обмена должен быть больше 0", self.tg.outgoing[-2].text)
+    
+    def test_cancel(self):
+        self._create_order(stop_on_rate=True)
+        self.assertIn("Введите курс обмена", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="cancel")
+        self.assertIn("Выберите действие:", self.tg.outgoing[-1].text)
+
+    def test_relative_details_float_dot(self):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="relative")
+        self.assertIn("Укажите относительный курс", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "1.1")
+        self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
+
+    def test_relative_details_float_comma(self):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="relative")
+        self.assertIn("Укажите относительный курс", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "1,1")
+        self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
+    
+    def test_relative_details_invalid(self):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="relative")
+        self.assertIn("Укажите относительный курс", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "abc")
+        self.assertIn("Процент должен быть задан числом, например 1.5", self.tg.outgoing[-2].text)
+    
+    def test_relative_details_negative(self):
+        self._create_order(stop_on_rate=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="relative")
+        self.assertIn("Укажите относительный курс", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "-1")
+        self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
+
+
+class TestSetMinOpThresholdStep(TestOrderCreationDialogs):
+    def test_simple(self):
+        self._create_order(stop_on_confirm=True, set_min_op_threshold_to="1000")
+        self.assertIn("Мин. сумма сделки: 1000", self.tg.outgoing[-1].text)
+
+    def test_invalid_number(self):
+        self._create_order(stop_on_confirm=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="set_min_op_threshold")
+        self.assertIn("Укажите минимальную сумму для операции", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "abc")
+        self.assertIn("Размер минимальной транзакции должен быть задан числом", self.tg.outgoing[-2].text)
+
+    def test_negative(self):
+        self._create_order(stop_on_confirm=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="set_min_op_threshold")
+        self.assertIn("Укажите минимальную сумму для операции", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "-1")
+        self.assertIn("Размер минимальной транзакции должен быть больше 0", self.tg.outgoing[-2].text)
+
+    def test_zero(self):
+        self._create_order(stop_on_confirm=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="set_min_op_threshold")
+        self.assertIn("Укажите минимальную сумму для операции", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "0")
+        # FIXME: а может быть разрешить 0?
+        self.assertIn("Размер минимальной транзакции должен быть больше 0", self.tg.outgoing[-2].text)
+
+    def test_cancel(self):
+        self._create_order(stop_on_confirm=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="set_min_op_threshold")
+        self.assertIn("Укажите минимальную сумму для операции", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="back")
+        self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="cancel")
+        self.assertIn("Выберите действие", self.tg.outgoing[-1].text)
+    
+    def test_float_number_comma(self):
+        self._create_order(stop_on_confirm=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="set_min_op_threshold")
+        self.assertIn("Укажите минимальную сумму для операции", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "1,1")
+        self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
+
+    def test_float_number_dot(self):
+        self._create_order(stop_on_confirm=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="set_min_op_threshold")
+        self.assertIn("Укажите минимальную сумму для операции", self.tg.outgoing[-1].text)
+        self.tg.emulate_incoming_message(1, "Joe", "1.1")
+        self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
+
+class TestConfirmOrderStep(TestOrderCreationDialogs):
+    def test_simple(self):
+        self._create_order(stop_on_confirm=True)
+        self.assertIn("Подтвердите параметры заказа", self.tg.outgoing[-1].text)
+
+    def test_confirm(self):
+        self._create_order(stop_on_confirm=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="place_order")
+        self.assertIn("Поздравляем! Ваш заказ размещен", self.tg.outgoing[-2].text)
+
+    def test_cancel(self):
+        self._create_order(stop_on_confirm=True)
+        self.tg.emulate_incoming_message(1, "Joe", "", keyboard_callback="cancel")
+        self.assertIn("Выберите действие", self.tg.outgoing[-1].text)
+
+    # Addtionally we test SetMinOpThresholdStep and SetLifetimeStep
+        
